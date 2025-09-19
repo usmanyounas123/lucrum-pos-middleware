@@ -1,0 +1,44 @@
+{
+  "middleware": {
+    "name": "POS Middleware",
+    "version": "1.0.0",
+    "description": "Point of Sale middleware for order synchronization"
+  },
+  "server": {
+    "api_port": 8081,
+    "websocket_port": 8080,
+    "environment": "production"
+  },
+  "database": {
+    "type": "sqlite",
+    "path": "./data.db",
+    "auto_backup": true,
+    "backup_interval_hours": 24
+  },
+  "security": {
+    "api_key_required": true,
+    "jwt_expiration": "24h",
+    "rate_limiting": {
+      "enabled": true,
+      "window_ms": 900000,
+      "max_requests": 100
+    }
+  },
+  "logging": {
+    "level": "info",
+    "file_path": "./logs/app.log",
+    "console_output": true,
+    "max_file_size": "10MB",
+    "max_files": 5
+  },
+  "clients": {
+    "auto_register": false,
+    "require_api_key": true,
+    "allowed_client_types": ["pos", "kds", "order_app"]
+  },
+  "orders": {
+    "auto_cleanup_days": 30,
+    "max_order_items": 50,
+    "status_values": ["new", "confirmed", "preparing", "ready", "completed", "cancelled"]
+  }
+}
