@@ -25,16 +25,31 @@ if %errorLevel% neq 0 (
     echo Run install.bat first
     goto :failed
 )
-echo OK: Service is installed
+
+sc query "Lucrum-POS-Middleware" | findstr "RUNNING" >nul 2>&1
+if %errorLevel% equ 0 (
+    echo OK: Service is installed and RUNNING
+    set SERVICE_RUNNING=true
+) else (
+    echo WARNING: Service is installed but NOT RUNNING
+    echo Use: manage.bat start
+    set SERVICE_RUNNING=false
+)
 
 echo.
-echo [3/5] Checking ports...
-netstat -an | find "8081" >nul 2>&1
-if %errorLevel% equ 0 (
-    echo OK: Port 8081 is active (API)
+if "%SERVICE_RUNNING%"=="true" (
+    echo [3/5] Checking ports...
+    netstat -an | find "8081" >nul 2>&1
+    if %errorLevel% equ 0 (
+        echo OK: Port 8081 is active ^(API^)
+    ) else (
+        echo ERROR: Port 8081 not active ^(service running but port not listening^)
+        goto :failed
+    )
 ) else (
-    echo ERROR: Port 8081 not active
-    goto :failed
+    echo [3/5] Skipping port check ^(service not running^)
+    echo INFO: Start service first: manage.bat start
+    goto :service_not_running
 )
 
 netstat -an | find "8080" >nul 2>&1
@@ -51,7 +66,7 @@ if %errorLevel% equ 0 (
     echo OK: API is responding
 ) else (
     echo ERROR: API not responding
-    echo Check if service is running: manage.bat status
+    echo Check if service is running: manage.bat start
     goto :failed
 )
 
@@ -62,6 +77,21 @@ echo Orders: http://localhost:8081/api/v1/orders
 echo Lucrum: http://localhost:8081/api/v1/lucrum/sales-orders
 echo WebSocket: ws://localhost:8080
 echo.
+goto :success
+
+:service_not_running
+echo.
+echo [4/5] Service Tests Skipped
+echo [5/5] Service Tests Skipped
+echo.
+echo ========================================
+echo SERVICE NOT RUNNING
+echo ========================================
+echo.
+echo The service is installed but not running.
+echo Start it with: manage.bat start
+echo Then run test.bat again to verify functionality.
+goto :end
 
 :success
 echo ========================================
@@ -75,7 +105,12 @@ goto :end
 echo ========================================
 echo TESTS FAILED!
 echo ========================================
-echo Fix the issues and test again
+echo.
+echo QUICK FIXES:
+echo 1. Start service: manage.bat start
+echo 2. Check status: status.bat
+echo 3. View logs: status.bat (choose Y to open logs)
+echo 4. Reinstall: uninstall.bat then install.bat
 
 :end
 pause

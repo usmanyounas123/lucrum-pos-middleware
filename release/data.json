@@ -1,0 +1,16 @@
+{
+  "sales_orders": [],
+  "clients": [
+    {
+      "client_id": "pos-001",
+      "client_type": "pos",
+      "client_name": "Main POS",
+      "api_key": "test-api-key-123",
+      "last_connected": "2025-09-19T00:00:00.000Z",
+      "is_active": true
+    }
+  ],
+  "kds_item_status": [],
+  "kds_status": [],
+  "invoices": []
+}

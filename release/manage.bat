@@ -28,10 +28,50 @@ exit /b 1
 echo Starting service...
 sc start "Lucrum-POS-Middleware"
 if %errorLevel% equ 0 (
-    echo SUCCESS: Service started
-    echo API: http://localhost:8081
+    echo Service start command sent successfully
+    echo Waiting for service to fully start...
+    timeout /t 15 /nobreak >nul
+    
+    sc query "Lucrum-POS-Middleware" | findstr "RUNNING" >nul 2>&1
+    if %errorLevel% equ 0 (
+        echo SUCCESS: Service is now RUNNING
+        echo API: http://localhost:8081
+        echo WebSocket: ws://localhost:8080
+    ) else (
+        echo WARNING: Service start command sent but service may still be starting
+        echo This is normal - checking again in 10 seconds...
+        timeout /t 10 /nobreak >nul
+        
+        sc query "Lucrum-POS-Middleware" | findstr "RUNNING" >nul 2>&1
+        if %errorLevel% equ 0 (
+            echo SUCCESS: Service is now RUNNING (took extra time)
+            echo API: http://localhost:8081
+            echo WebSocket: ws://localhost:8080
+        ) else (
+            echo Service may still be starting. Check status in services.msc
+            echo Or try: manage.bat status
+        )
+    )
 ) else (
-    echo ERROR: Failed to start service
+    echo WARNING: Service start returned timeout error (common with this service)
+    echo Checking if service started despite the error...
+    timeout /t 15 /nobreak >nul
+    
+    sc query "Lucrum-POS-Middleware" | findstr "RUNNING" >nul 2>&1
+    if %errorLevel% equ 0 (
+        echo SUCCESS: Service is RUNNING despite timeout warning
+        echo API: http://localhost:8081
+        echo WebSocket: ws://localhost:8080
+    ) else (
+        echo Service did not start. Possible issues:
+        echo 1. Executable file missing or corrupted
+        echo 2. Port conflict (another service using 8081/8080)
+        echo 3. Permission issues
+        echo 4. Service needs more time to start
+        echo.
+        echo Try waiting 30 seconds then: manage.bat status
+        echo Or check: status.bat for detailed diagnostics
+    )
 )
 goto :end
 
