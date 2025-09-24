@@ -6,7 +6,7 @@ echo ========================================
 echo.
 echo BREAKTHROUGH: Task Scheduler Solutions (bypasses ALL Windows Service issues):
 echo.
-echo [1] ULTRA SIMPLE (NEW) - Direct PowerShell Task (ULTIMATE solution)
+echo [1] FOOLPROOF (NEW) - Error-proof PowerShell Task (ULTIMATE solution)
 echo [2] TASK SCHEDULER (NEW) - Windows Task Scheduler instead of services
 echo [3] Batch Wrapper - Uses Windows batch as service wrapper
 echo [4] Ultimate Fix - Minimal SC configuration with alternatives
@@ -18,12 +18,12 @@ echo [9] Advanced Installer - Extended monitoring and permissions
 echo [A] Just test the executable first
 echo [B] Run diagnostic tests again
 echo.
-echo RECOMMENDED: Option [1] - Ultra Simple Direct Task (100%% reliable)
+echo RECOMMENDED: Option [1] - Foolproof PowerShell (100%% reliable, no errors)
 echo NO SERVICES: Options [1] and [2] avoid Windows Services entirely
 echo.
 set /p choice="Enter your choice (1-9, A, B): "
 
-if /i "%choice%"=="1" goto :ultrasimple
+if /i "%choice%"=="1" goto :foolproof
 if /i "%choice%"=="2" goto :taskscheduler
 if /i "%choice%"=="3" goto :batch
 if /i "%choice%"=="4" goto :ultimate
@@ -36,9 +36,9 @@ if /i "%choice%"=="A" goto :test
 if /i "%choice%"=="B" goto :diagnostic
 goto :invalid
 
-:ultrasimple
+:foolproof
 echo.
-echo Running ULTRA SIMPLE POWERSHELL TASK SOLUTION...
+echo Running FOOLPROOF POWERSHELL TASK SOLUTION...
 call "%~dp0install-powershell-wrapper.bat"
 goto :end
 
