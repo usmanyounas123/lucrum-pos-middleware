@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lucrum POS Middleware - API Tester</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { border: 1px solid #ccc; margin: 20px 0; padding: 20px; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .result { background-color: #f8f9fa; padding: 10px; border-radius: 3px; font-family: monospace; white-space: pre-wrap; }
+        button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 3px; cursor: pointer; margin: 5px; }
+        button:hover { background-color: #0056b3; }
+        input { width: 300px; padding: 5px; margin: 5px 0; }
+        .endpoint { font-weight: bold; color: #0066cc; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Lucrum POS Middleware - API Tester</h1>
+        
+        <div class="test-section">
+            <h3>📊 Server Status</h3>
+            <p><strong>HTTP API:</strong> <span id="apiStatus">❓ Testing...</span></p>
+            <p><strong>WebSocket:</strong> <span id="wsStatus">❓ Testing...</span></p>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Configuration</h3>
+            <label>API Base URL:</label><br>
+            <input type="text" id="baseUrl" value="http://localhost:8081" placeholder="http://localhost:8081"><br>
+            
+            <label>API Key (from .env file):</label><br>
+            <input type="text" id="apiKey" value="CHANGE-THIS-API-KEY-IN-PRODUCTION-abc123" placeholder="Your API key"><br>
+            
+            <label>WebSocket URL:</label><br>
+            <input type="text" id="wsUrl" value="ws://localhost:8080" placeholder="ws://localhost:8080">
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 API Tests</h3>
+            
+            <div>
+                <h4>Health Check (No Auth Required)</h4>
+                <p class="endpoint">GET /api/v1/health</p>
+                <button onclick="testHealth()">Test Health</button>
+                <div id="healthResult" class="result"></div>
+            </div>
+
+            <div>
+                <h4>Orders Endpoint (Auth Required)</h4>
+                <p class="endpoint">GET /api/v1/orders</p>
+                <button onclick="testOrders()">Test Orders</button>
+                <div id="ordersResult" class="result"></div>
+            </div>
+
+            <div>
+                <h4>Lucrum Sales Orders (Auth Required)</h4>
+                <p class="endpoint">GET /api/v1/lucrum/sales-orders</p>
+                <button onclick="testLucrumOrders()">Test Lucrum Orders</button>
+                <div id="lucrumResult" class="result"></div>
+            </div>
+
+            <div>
+                <h4>Create Test Order (Auth Required)</h4>
+                <p class="endpoint">POST /api/v1/orders</p>
+                <button onclick="createTestOrder()">Create Test Order</button>
+                <div id="createResult" class="result"></div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔌 WebSocket Test</h3>
+            <button onclick="testWebSocket()">Test WebSocket Connection</button>
+            <button onclick="disconnectWebSocket()">Disconnect</button>
+            <div id="wsResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📖 Available Endpoints</h3>
+            <ul>
+                <li><strong>GET /api/v1/health</strong> - Health check (no auth)</li>
+                <li><strong>GET /api/v1/orders</strong> - Get orders (auth required)</li>
+                <li><strong>POST /api/v1/orders</strong> - Create order (auth required)</li>
+                <li><strong>PUT /api/v1/orders/:id/status</strong> - Update order status (auth required)</li>
+                <li><strong>POST /api/v1/invoices</strong> - Create invoice (auth required)</li>
+                <li><strong>GET /api/v1/lucrum/sales-orders</strong> - Get Lucrum sales orders (auth required)</li>
+                <li><strong>POST /api/v1/lucrum/sales-orders</strong> - Create Lucrum sales order (auth required)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let wsConnection = null;
+
+        function getApiKey() {
+            return document.getElementById('apiKey').value;
+        }
+
+        function getBaseUrl() {
+            return document.getElementById('baseUrl').value;
+        }
+
+        function getWsUrl() {
+            return document.getElementById('wsUrl').value;
+        }
+
+        async function testHealth() {
+            const resultDiv = document.getElementById('healthResult');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch(`${getBaseUrl()}/api/v1/health`);
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `Status: ${response.status}
+Response: ${JSON.stringify(data, null, 2)}`;
+                resultDiv.parentElement.className = response.ok ? 'success' : 'error';
+                
+                document.getElementById('apiStatus').innerHTML = response.ok ? '✅ Online' : '❌ Error';
+            } catch (error) {
+                resultDiv.innerHTML = `Error: ${error.message}`;
+                resultDiv.parentElement.className = 'error';
+                document.getElementById('apiStatus').innerHTML = '❌ Offline';
+            }
+        }
+
+        async function testOrders() {
+            const resultDiv = document.getElementById('ordersResult');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch(`${getBaseUrl()}/api/v1/orders`, {
+                    headers: {
+                        'X-API-Key': getApiKey()
+                    }
+                });
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `Status: ${response.status}
+Response: ${JSON.stringify(data, null, 2)}`;
+                resultDiv.parentElement.className = response.ok ? 'success' : 'error';
+            } catch (error) {
+                resultDiv.innerHTML = `Error: ${error.message}`;
+                resultDiv.parentElement.className = 'error';
+            }
+        }
+
+        async function testLucrumOrders() {
+            const resultDiv = document.getElementById('lucrumResult');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch(`${getBaseUrl()}/api/v1/lucrum/sales-orders`, {
+                    headers: {
+                        'X-API-Key': getApiKey()
+                    }
+                });
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `Status: ${response.status}
+Response: ${JSON.stringify(data, null, 2)}`;
+                resultDiv.parentElement.className = response.ok ? 'success' : 'error';
+            } catch (error) {
+                resultDiv.innerHTML = `Error: ${error.message}`;
+                resultDiv.parentElement.className = 'error';
+            }
+        }
+
+        async function createTestOrder() {
+            const resultDiv = document.getElementById('createResult');
+            resultDiv.innerHTML = 'Creating test order...';
+            
+            const testOrder = {
+                table_no: "T001",
+                branch: "main",
+                items: [
+                    {
+                        name: "Test Item",
+                        quantity: 1,
+                        price: 10.00
+                    }
+                ]
+            };
+            
+            try {
+                const response = await fetch(`${getBaseUrl()}/api/v1/orders`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': getApiKey()
+                    },
+                    body: JSON.stringify(testOrder)
+                });
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `Status: ${response.status}
+Request: ${JSON.stringify(testOrder, null, 2)}
+Response: ${JSON.stringify(data, null, 2)}`;
+                resultDiv.parentElement.className = response.ok ? 'success' : 'error';
+            } catch (error) {
+                resultDiv.innerHTML = `Error: ${error.message}`;
+                resultDiv.parentElement.className = 'error';
+            }
+        }
+
+        function testWebSocket() {
+            const resultDiv = document.getElementById('wsResult');
+            resultDiv.innerHTML = 'Connecting to WebSocket...';
+            
+            try {
+                wsConnection = new WebSocket(getWsUrl());
+                
+                wsConnection.onopen = function(event) {
+                    resultDiv.innerHTML += '\n✅ WebSocket connected successfully!';
+                    document.getElementById('wsStatus').innerHTML = '✅ Connected';
+                    
+                    // Send a test message
+                    wsConnection.send(JSON.stringify({
+                        type: 'test',
+                        message: 'Hello from API tester!'
+                    }));
+                    resultDiv.innerHTML += '\n📤 Test message sent';
+                };
+                
+                wsConnection.onmessage = function(event) {
+                    resultDiv.innerHTML += `\n📥 Received: ${event.data}`;
+                };
+                
+                wsConnection.onerror = function(error) {
+                    resultDiv.innerHTML += `\n❌ WebSocket error: ${error}`;
+                    document.getElementById('wsStatus').innerHTML = '❌ Error';
+                };
+                
+                wsConnection.onclose = function(event) {
+                    resultDiv.innerHTML += `\n🔌 WebSocket closed (code: ${event.code})`;
+                    document.getElementById('wsStatus').innerHTML = '❌ Disconnected';
+                };
+                
+            } catch (error) {
+                resultDiv.innerHTML = `Error: ${error.message}`;
+                document.getElementById('wsStatus').innerHTML = '❌ Error';
+            }
+        }
+
+        function disconnectWebSocket() {
+            if (wsConnection) {
+                wsConnection.close();
+                document.getElementById('wsResult').innerHTML += '\n🔌 Disconnected by user';
+            }
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            testHealth();
+        };
+    </script>
+</body>
+</html>
