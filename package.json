@@ -9,6 +9,8 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "test": "jest",
     "build-exe": "npm run build && pkg dist/index.js --targets node18-win-x64 --output dist/pos-middleware.exe",
+    "build-service-exe": "npm run build && pkg dist/index-service.js --targets node18-win-x64 --output dist/pos-middleware-service.exe",
+    "build-all-exe": "npm run build && pkg dist/index.js --targets node18-win-x64 --output dist/pos-middleware.exe && pkg dist/index-service.js --targets node18-win-x64 --output dist/pos-middleware-service.exe",
     "build-all": "npm run build && pkg dist/index.js --targets node18-win-x64,node18-linux-x64 --out-path dist/executables",
     "install-service": "npm run build && node dist/scripts/install-service.js",
     "uninstall-service": "node dist/scripts/uninstall-service.js",
