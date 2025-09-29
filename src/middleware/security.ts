@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
-import helmet from 'helmet';
 import crypto from 'crypto';
 import { getLogger } from '../services/logger';
 
@@ -15,8 +14,14 @@ export const rateLimiter = rateLimit({
   legacyHeaders: false
 });
 
-// Security headers middleware using helmet
-export const securityHeaders = helmet();
+// Basic security headers middleware (replacing helmet for compatibility)
+export const securityHeaders = (req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+};
 
 // Generate API key for new clients
 export const generateApiKey = (clientId: string): string => {
