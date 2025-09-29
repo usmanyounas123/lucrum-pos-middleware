@@ -1,0 +1,26 @@
+POS Middleware Release v2.0.0
+Build Date: September 29, 2025
+Node.js Version Required: 14+
+
+Release Notes:
+- Simplified order management middleware
+- SQLite database with automatic setup
+- Real-time WebSocket notifications
+- RESTful API for order CRUD operations
+- Cross-platform support (Windows, Linux, macOS)
+- Easy installation with automated scripts
+
+API Endpoints:
+- POST /api/order_created - Create new order
+- POST /api/order_updated - Update existing order  
+- POST /api/order_deleted - Delete order
+- GET /api/orders - List all orders
+- GET /api/health - Health check
+
+WebSocket Events:
+- Order_Created - New order notifications
+- Order_Updated - Order update notifications
+- Order_Deleted - Order deletion notifications
+
+For installation instructions, see INSTALL.md
+For complete documentation, see README.md
