@@ -1,36 +1,32 @@
 @echo off
 echo Uninstalling Lucrum POS Middleware...
+echo.
 
-REM Check admin rights
+REM Check if running as administrator
 net session >nul 2>&1
 if %errorLevel% neq 0 (
-    echo ERROR: Run as Administrator
+    echo ERROR: This script must be run as Administrator
+    echo Right-click on this file and select "Run as administrator"
     pause
     exit /b 1
 )
 
 echo Stopping service...
-sc stop "Lucrum-POS-Middleware" >nul 2>&1
+sc stop "LucrumPOSMiddleware"
 
-echo Removing service...
-sc delete "Lucrum-POS-Middleware"
-if %errorLevel% equ 0 (
-    echo SUCCESS: Service removed
+echo Deleting service...
+sc delete "LucrumPOSMiddleware"
+
+echo.
+set /p DELETE_FILES="Delete all files from C:\LucrumPOSMiddleware? (y/n): "
+if /i "%DELETE_FILES%"=="y" (
+    echo Deleting files...
+    rmdir /s /q "C:\LucrumPOSMiddleware"
+    echo Files deleted.
 ) else (
-    echo WARNING: Service was not installed or already removed
+    echo Files preserved at C:\LucrumPOSMiddleware\
 )
 
-echo Killing any running processes...
-taskkill /f /im pos-middleware.exe >nul 2>&1
-
 echo.
-echo Uninstall complete!
-echo.
-echo Files preserved:
-echo - pos-middleware.exe
-echo - .env (configuration)
-echo - config.json
-echo - logs folder
-echo.
-echo To completely remove all files, delete this folder manually.
-timeout /t 3 /nobreak >nul
+echo Uninstallation complete!
+pause

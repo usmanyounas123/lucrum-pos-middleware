@@ -1,0 +1,26 @@
+
+IDI_ICON1 ICON DISCARDABLE "app-icon.ico"
+
+1 VERSIONINFO
+FILEVERSION     1,2,0,0
+PRODUCTVERSION  1,2,0,0
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    BEGIN
+      VALUE "CompanyName", "Lucrum Technologies"
+      VALUE "FileDescription", "Lucrum POS Middleware"
+      VALUE "FileVersion", "1.2.0"
+      VALUE "InternalName", "pos-middleware"
+      VALUE "LegalCopyright", "Copyright (C) 2025 Lucrum Technologies"
+      VALUE "OriginalFilename", "pos-middleware.exe"
+      VALUE "ProductName", "Lucrum POS Middleware"
+      VALUE "ProductVersion", "1.2.0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1252
+  END
+END

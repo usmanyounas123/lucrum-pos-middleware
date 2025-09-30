@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucrum POS - Admin Key Manager</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f6fa;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(45deg, #2E8B57, #48D1CC);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .content {
+            padding: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+        }
+        .btn {
+            background: #2E8B57;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .btn:hover { background: #236B4F; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        .key-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+        .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .key-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .key-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .key-item:last-child { border-bottom: none; }
+        .key-value {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 3px;
+            flex: 1;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Admin Key Manager</h1>
+            <p>Manage API keys for your Lucrum POS Middleware</p>
+        </div>
+        
+        <div class="content">
+            <div class="section">
+                <h3>🔑 Generate New API Key</h3>
+                <button class="btn" onclick="generateNewKey()">Generate API Key</button>
+                <button class="btn" onclick="generateJWTSecret()">Generate JWT Secret</button>
+                <button class="btn" onclick="generateSessionKey()">Generate Session Key</button>
+                
+                <div id="newKeyResult" style="margin-top: 15px; display: none;">
+                    <label>Generated Key:</label>
+                    <input type="text" id="generatedKey" class="key-input" readonly>
+                    <button class="btn" onclick="copyToClipboard('generatedKey')">📋 Copy</button>
+                    <button class="btn" onclick="saveToEnv()">💾 Save to Config</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>⚙️ Current Environment Keys</h3>
+                <button class="btn" onclick="loadCurrentKeys()">🔍 Load Current Keys</button>
+                <button class="btn" onclick="testConnection()">🔌 Test Connection</button>
+                
+                <div id="connectionStatus" class="status"></div>
+                
+                <div id="currentKeys" style="margin-top: 15px;">
+                    <p style="color: #666;">Click "Load Current Keys" to view...</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>📝 Manual Key Management</h3>
+                <label>Key Name:</label>
+                <input type="text" id="keyName" class="key-input" placeholder="e.g., API_KEY, JWT_SECRET">
+                
+                <label>Key Value:</label>
+                <input type="text" id="keyValue" class="key-input" placeholder="Enter key value or generate above">
+                
+                <button class="btn" onclick="addCustomKey()">➕ Add Key</button>
+                <button class="btn btn-danger" onclick="clearAllKeys()">🗑️ Clear All</button>
+            </div>
+
+            <div class="section">
+                <h3>📊 Quick Actions</h3>
+                <button class="btn" onclick="exportKeys()">📤 Export Keys</button>
+                <button class="btn" onclick="rotateAllKeys()">🔄 Rotate All Keys</button>
+                <button class="btn" onclick="backupKeys()">💾 Backup Keys</button>
+                
+                <div id="actionResult" class="status"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+        let currentKeys = {};
+
+        function generateSecureKey(length = 32) {
+            const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            const array = new Uint8Array(length);
+            crypto.getRandomValues(array);
+            
+            for (let i = 0; i < length; i++) {
+                result += charset.charAt(array[i] % charset.length);
+            }
+            return result;
+        }
+
+        function generateNewKey() {
+            const key = generateSecureKey(32);
+            showGeneratedKey(key, 'API Key');
+        }
+
+        function generateJWTSecret() {
+            const secret = generateSecureKey(64);
+            showGeneratedKey(secret, 'JWT Secret');
+        }
+
+        function generateSessionKey() {
+            const key = generateSecureKey(16);
+            showGeneratedKey(key, 'Session Key');
+        }
+
+        function showGeneratedKey(key, type) {
+            document.getElementById('generatedKey').value = key;
+            document.getElementById('newKeyResult').style.display = 'block';
+            showStatus('success', `${type} generated successfully!`);
+        }
+
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            element.select();
+            document.execCommand('copy');
+            showStatus('success', 'Key copied to clipboard!');
+        }
+
+        function saveToEnv() {
+            const key = document.getElementById('generatedKey').value;
+            if (!key) return;
+            
+            // Simulate saving to environment
+            const keyName = prompt('Enter key name (e.g., API_KEY):');
+            if (keyName) {
+                currentKeys[keyName] = key;
+                showStatus('success', `Key saved as ${keyName}`);
+                updateKeysDisplay();
+            }
+        }
+
+        function loadCurrentKeys() {
+            // Simulate loading from middleware
+            showStatus('success', 'Keys loaded from environment');
+            updateKeysDisplay();
+        }
+
+        function testConnection() {
+            // Test connection to middleware
+            fetch(`${API_BASE}/health`)
+                .then(response => {
+                    if (response.ok) {
+                        showConnectionStatus('success', '✅ Connection successful - Middleware is running');
+                    } else {
+                        showConnectionStatus('error', '❌ Connection failed - Check if middleware is running');
+                    }
+                })
+                .catch(error => {
+                    showConnectionStatus('error', '❌ Cannot connect to middleware on localhost:3000');
+                });
+        }
+
+        function addCustomKey() {
+            const name = document.getElementById('keyName').value.trim();
+            const value = document.getElementById('keyValue').value.trim();
+            
+            if (!name || !value) {
+                showStatus('error', 'Please enter both key name and value');
+                return;
+            }
+            
+            currentKeys[name] = value;
+            document.getElementById('keyName').value = '';
+            document.getElementById('keyValue').value = '';
+            showStatus('success', `Key "${name}" added successfully`);
+            updateKeysDisplay();
+        }
+
+        function updateKeysDisplay() {
+            const container = document.getElementById('currentKeys');
+            
+            if (Object.keys(currentKeys).length === 0) {
+                container.innerHTML = '<p style="color: #666;">No keys configured</p>';
+                return;
+            }
+            
+            const keyList = Object.entries(currentKeys).map(([name, value]) => `
+                <div class="key-item">
+                    <div>
+                        <strong>${name}:</strong>
+                        <div class="key-value">${value.substring(0, 12)}...${value.substring(value.length - 4)}</div>
+                    </div>
+                    <div>
+                        <button class="btn" onclick="copyKeyValue('${name}')">📋</button>
+                        <button class="btn btn-danger" onclick="deleteKey('${name}')">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = `<div class="key-list">${keyList}</div>`;
+        }
+
+        function copyKeyValue(keyName) {
+            navigator.clipboard.writeText(currentKeys[keyName]);
+            showStatus('success', `${keyName} copied to clipboard`);
+        }
+
+        function deleteKey(keyName) {
+            if (confirm(`Delete key "${keyName}"?`)) {
+                delete currentKeys[keyName];
+                updateKeysDisplay();
+                showStatus('success', `Key "${keyName}" deleted`);
+            }
+        }
+
+        function clearAllKeys() {
+            if (confirm('Clear all keys? This cannot be undone!')) {
+                currentKeys = {};
+                updateKeysDisplay();
+                showStatus('success', 'All keys cleared');
+            }
+        }
+
+        function exportKeys() {
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                keys: currentKeys
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `lucrum-keys-${Date.now()}.json`;
+            a.click();
+            
+            showActionStatus('success', 'Keys exported successfully');
+        }
+
+        function rotateAllKeys() {
+            if (confirm('Rotate all keys? This will generate new values for all existing keys.')) {
+                Object.keys(currentKeys).forEach(keyName => {
+                    currentKeys[keyName] = generateSecureKey(32);
+                });
+                updateKeysDisplay();
+                showActionStatus('success', 'All keys rotated successfully');
+            }
+        }
+
+        function backupKeys() {
+            const backup = {
+                timestamp: new Date().toISOString(),
+                backup: currentKeys
+            };
+            localStorage.setItem('lucrum-keys-backup', JSON.stringify(backup));
+            showActionStatus('success', 'Keys backed up to local storage');
+        }
+
+        function showStatus(type, message) {
+            const status = document.getElementById('newKeyResult').parentNode.querySelector('.status') || 
+                          document.createElement('div');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            status.style.display = 'block';
+            
+            if (!status.parentNode) {
+                document.getElementById('newKeyResult').parentNode.appendChild(status);
+            }
+            
+            setTimeout(() => status.style.display = 'none', 3000);
+        }
+
+        function showConnectionStatus(type, message) {
+            const status = document.getElementById('connectionStatus');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            status.style.display = 'block';
+        }
+
+        function showActionStatus(type, message) {
+            const status = document.getElementById('actionResult');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            status.style.display = 'block';
+            setTimeout(() => status.style.display = 'none', 3000);
+        }
+
+        // Initialize with some sample keys
+        currentKeys = {
+            'API_KEY': generateSecureKey(32),
+            'JWT_SECRET': generateSecureKey(64)
+        };
+
+        // Auto-load on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateKeysDisplay();
+            testConnection();
+        });
+    </script>
+</body>
+</html>

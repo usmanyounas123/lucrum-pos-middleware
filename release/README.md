@@ -1,119 +1,234 @@
-# 🚀 POS Middleware v1.2.0 - Windows Release
+# Ultra-Simple POS Middleware v1.2.0# 🚀 POS Middleware v1.2.0 - Windows Release
 
-## 📦 What's Included
 
-This release package contains a complete, standalone POS Middleware application with Lucrum integration for Windows. Version 1.2.0 includes enhanced stability, improved documentation, and production-ready optimizations.
 
-### 📁 Package Contents
+A lightweight order management middleware with real-time WebSocket notifications.## 📦 What's Included
 
-```
-pos-middleware-release/
+
+
+## 🎯 What It DoesThis release package contains a complete, standalone POS Middleware application with Lucrum integration for Windows. Version 1.2.0 includes enhanced stability, improved documentation, and production-ready optimizations.
+
+
+
+- **Simple Database**: Just 2 fields - `order_id` (auto-generated) + `payload` (any JSON)### 📁 Package Contents
+
+- **3 API Endpoints**: Create, Update, Delete orders
+
+- **WebSocket Events**: Real-time notifications for all order changes```
+
+- **Flexible Payload**: Store any JSON structure - no validation, no restrictionspos-middleware-release/
+
 ├── pos-middleware.exe          # Standalone executable (no Node.js required)
-├── install.bat                # Complete installation with all fixes and auto-start
+
+## 📦 Quick Installation├── install.bat                # Complete installation with all fixes and auto-start
+
 ├── service.bat                # Service management (start/stop/restart/status/test)
-├── uninstall.bat              # Complete removal and cleanup
+
+### For Client Systems:├── uninstall.bat              # Complete removal and cleanup
+
 ├── migrate.bat                # Helper for transitioning from old files
-├── .env                       # Configuration file
+
+1. **Extract Files**: Unzip this package to any folder (e.g., `C:\POS-Middleware\`)├── .env                       # Configuration file
+
 ├── config.json                # Advanced configuration
-├── INSTALLATION.md            # Detailed installation guide
+
+2. **Run Installer**: Double-click `install.bat` (will ask for Administrator privileges)├── INSTALLATION.md            # Detailed installation guide
+
 ├── README.md                  # This file
-├── QUICK_START.md             # Quick start guide
-├── FEATURES.md                # Feature overview
-├── MIGRATION_SUMMARY.md       # Migration details
-├── STREAMLINED_MIGRATION.md   # New streamlined approach guide
+
+3. **Configure API Key**: Edit `.env` file and change the API key:├── QUICK_START.md             # Quick start guide
+
+   ```├── FEATURES.md                # Feature overview
+
+   ADMIN_API_KEY=your-unique-api-key-here├── MIGRATION_SUMMARY.md       # Migration details
+
+   ```├── STREAMLINED_MIGRATION.md   # New streamlined approach guide
+
 ├── examples/                  # API testing examples
-│   ├── LUCRUM_API_TESTING.md  # Complete API testing guide
+
+4. **Start Service**: Double-click `start.bat`│   ├── LUCRUM_API_TESTING.md  # Complete API testing guide
+
 │   ├── API_TESTING.md         # Legacy API examples
-│   └── websocket-test.html    # WebSocket test client
+
+5. **Verify**: Open browser to `http://localhost:8081/api/health`│   └── websocket-test.html    # WebSocket test client
+
 ├── old-batch-files/           # Backup of previous batch files
-└── logs/                      # Application logs directory
+
+## 🔌 API Usage└── logs/                      # Application logs directory
+
 ```
+
+### Base URL: `http://localhost:8081/api/v1`
 
 ## ⚡ Quick Start
 
-### 1. **Test First** (Optional but Recommended)
-```cmd
-service.bat test
-```
+### Headers Required:
+
+```### 1. **Test First** (Optional but Recommended)
+
+Content-Type: application/json```cmd
+
+X-API-Key: your-unique-api-key-hereservice.bat test
+
+``````
+
 Press Ctrl+C to stop after testing.
 
-### 2. **Install as Service**
-1. Right-click Command Prompt → "Run as administrator"
-2. Navigate to this folder
-3. Run: `install.bat`
+### Create Order:
+
+```bash### 2. **Install as Service**
+
+POST /orders1. Right-click Command Prompt → "Run as administrator"
+
+Body: { "any": "json", "structure": "works", "data": [1,2,3] }2. Navigate to this folder
+
+Response: { "success": true, "order_id": "ORD-ABC123DEF" }3. Run: `install.bat`
+
+```
 
 ### 3. **Check Status**
-```cmd
-service.bat status
-```
 
-### 4. **Verify Installation**
-- Open browser: `http://localhost:8081/health`
+### Update Order:```cmd
+
+```bashservice.bat status
+
+PUT /orders/ORD-ABC123DEF```
+
+Body: { "completely": "different", "json": "allowed" }
+
+Response: { "success": true, "order_id": "ORD-ABC123DEF" }### 4. **Verify Installation**
+
+```- Open browser: `http://localhost:8081/health`
+
 - Check Windows Services: `services.msc`
 
-## 🔧 Configuration
+### Delete Order:
 
-### Required Changes
-Edit `.env` file and **CHANGE THESE DEFAULT VALUES**:
+```bash## 🔧 Configuration
+
+DELETE /orders/ORD-ABC123DEF
+
+Response: { "success": true, "order_id": "ORD-ABC123DEF" }### Required Changes
+
+```Edit `.env` file and **CHANGE THESE DEFAULT VALUES**:
+
 ```env
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+
+## 🌐 WebSocket EventsJWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+
 ADMIN_API_KEY=admin-api-key-change-this-in-production
-```
 
-### Optional Settings
-- `PORT=8081` - REST API port
-- `WS_PORT=8080` - WebSocket port
-- `LOG_LEVEL=info` - Logging detail level
+### Connect to: `ws://localhost:8080````
 
-## 🌐 API Endpoints
 
-### Base URLs
-- **Lucrum API**: `http://localhost:8081/api/v1/lucrum`
-- **Legacy API**: `http://localhost:8081/api/v1`
 
-### Authentication
-Include API key in all requests:
-```
-X-API-Key: your-admin-api-key-here
-```
+### Events:### Optional Settings
 
-### Key Endpoints
-- `GET /lucrum/sales-orders` - List orders
-- `POST /lucrum/sales-orders` - Create order
-- `GET /lucrum/kds/orders` - Kitchen display orders
+- `order_created` → `{ order_id: "ORD-...", payload: {...} }`- `PORT=8081` - REST API port
 
-## 🧪 Testing
+- `order_updated` → `{ order_id: "ORD-...", payload: {...} }`- `WS_PORT=8080` - WebSocket port
 
-### API Testing
-Complete examples in `examples/LUCRUM_API_TESTING.md`
+- `order_deleted` → `{ order_id: "ORD-...", payload: {...} }`- `LOG_LEVEL=info` - Logging detail level
 
-### WebSocket Testing
-Open `examples/websocket-test.html` in browser
 
-### Quick Test
-```cmd
-curl -X GET "http://localhost:8081/api/v1/lucrum/sales-orders" ^
-     -H "X-API-Key: admin-api-key-change-this-in-production"
+
+### JavaScript Example:## 🌐 API Endpoints
+
+```javascript
+
+const socket = io('http://localhost:8081', {### Base URLs
+
+  auth: { apiKey: 'your-api-key' }- **Lucrum API**: `http://localhost:8081/api/v1/lucrum`
+
+});- **Legacy API**: `http://localhost:8081/api/v1`
+
+
+
+socket.on('order_created', (data) => {### Authentication
+
+  console.log('New order:', data.order_id, data.payload);Include API key in all requests:
+
+});```
+
+```X-API-Key: your-admin-api-key-here
+
 ```
 
 ## 🛠️ Service Management
 
-| Action | Command | Admin Required | Description |
-|--------|---------|----------------|-------------|
-| **Install** | `install.bat` | ✅ Yes | Complete installation with all fixes and auto-start |
-| **Start** | `service.bat start` | ❌ No | Start the service |
-| **Stop** | `service.bat stop` | ❌ No | Stop the service |
+### Key Endpoints
+
+- **Start**: `start.bat`- `GET /lucrum/sales-orders` - List orders
+
+- **Stop**: `stop.bat`- `POST /lucrum/sales-orders` - Create order
+
+- **Status**: `status.bat`- `GET /lucrum/kds/orders` - Kitchen display orders
+
+- **Uninstall**: `uninstall.bat`
+
+## 🧪 Testing
+
+## 🔧 Configuration
+
+### API Testing
+
+Edit `.env` file:Complete examples in `examples/LUCRUM_API_TESTING.md`
+
+```env
+
+PORT=8081                          # API port### WebSocket Testing
+
+WS_PORT=8080                       # WebSocket portOpen `examples/websocket-test.html` in browser
+
+ADMIN_API_KEY=change-this-key      # CHANGE THIS!
+
+LOG_LEVEL=info                     # debug/info/warn/error### Quick Test
+
+``````cmd
+
+curl -X GET "http://localhost:8081/api/v1/lucrum/sales-orders" ^
+
+## 📁 Files     -H "X-API-Key: admin-api-key-change-this-in-production"
+
+```
+
+- `simple-pos-middleware.exe` - Main application
+
+- `install.bat` - Installation script## 🛠️ Service Management
+
+- `start.bat` - Start service
+
+- `stop.bat` - Stop service| Action | Command | Admin Required | Description |
+
+- `status.bat` - Check service status|--------|---------|----------------|-------------|
+
+- `uninstall.bat` - Remove service| **Install** | `install.bat` | ✅ Yes | Complete installation with all fixes and auto-start |
+
+- `.env` - Configuration file| **Start** | `service.bat start` | ❌ No | Start the service |
+
+- `test.html` - WebSocket test client| **Stop** | `service.bat stop` | ❌ No | Stop the service |
+
 | **Restart** | `service.bat restart` | ❌ No | Restart the service |
-| **Status** | `service.bat status` | ❌ No | Comprehensive service status & health check |
+
+## 🚀 Perfect For:| **Status** | `service.bat status` | ❌ No | Comprehensive service status & health check |
+
 | **Test** | `service.bat test` | ❌ No | Test executable directly without service |
-| **Uninstall** | `uninstall.bat` | ✅ Yes | Complete removal and cleanup |
-| **Migration** | `migrate.bat` | ❌ No | Helper for transitioning from old batch files |
 
-## 🔥 Features
+- **POS Systems** connecting to kitchen displays| **Uninstall** | `uninstall.bat` | ✅ Yes | Complete removal and cleanup |
 
-### ✅ Core Capabilities
+- **Order Management** between multiple applications| **Migration** | `migrate.bat` | ❌ No | Helper for transitioning from old batch files |
+
+- **Real-time Notifications** for order status changes
+
+- **Simple Integration** with any system that can send JSON## 🔥 Features
+
+
+
+---### ✅ Core Capabilities
+
 - **Standalone Executable** - No Node.js installation required
-- **Windows Service** - Runs automatically with Windows
+
+**Support**: Check `logs/app.log` for any issues.- **Windows Service** - Runs automatically with Windows
 - **RESTful API** - Complete CRUD operations
 - **Real-time WebSocket** - Live order updates
 - **SQLite Database** - Lightweight, file-based storage

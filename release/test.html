@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple POS Middleware - WebSocket Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .events {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .flex-container {
+            display: flex;
+            gap: 20px;
+        }
+        .flex-item {
+            flex: 1;
+        }
+        input, textarea, button, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .delete-btn {
+            background-color: #dc3545;
+        }
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+        .update-btn {
+            background-color: #28a745;
+        }
+        .update-btn:hover {
+            background-color: #218838;
+        }
+        textarea {
+            resize: vertical;
+            font-family: monospace;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        .event-item {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-left: 3px solid #007bff;
+            background-color: #fff;
+        }
+        .event-create {
+            border-left-color: #28a745;
+        }
+        .event-update {
+            border-left-color: #ffc107;
+        }
+        .event-delete {
+            border-left-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Simple POS Middleware - WebSocket Test Client</h1>
+    
+    <div class="container">
+        <h2>Connection Status</h2>
+        <div id="status" class="status disconnected">Disconnected</div>
+        
+        <div class="flex-container">
+            <div class="flex-item">
+                <label>Server URL:</label>
+                <input type="text" id="serverUrl" value="http://localhost:8081" placeholder="http://localhost:8081">
+            </div>
+            <div class="flex-item">
+                <label>API Key (optional):</label>
+                <input type="text" id="apiKey" value="" placeholder="your-api-key">
+            </div>
+        </div>
+        
+        <button onclick="connect()" id="connectBtn">Connect</button>
+        <button onclick="disconnect()" id="disconnectBtn" disabled>Disconnect</button>
+    </div>
+
+    <div class="flex-container">
+        <div class="flex-item">
+            <div class="container">
+                <h2>Create Order</h2>
+                <textarea id="createPayload" rows="8" placeholder="Enter order payload as JSON">
+{
+  "customer_name": "John Doe",
+  "table_number": 5,
+  "items": [
+    {
+      "name": "Burger",
+      "price": 12.99,
+      "quantity": 1
+    },
+    {
+      "name": "Fries",
+      "price": 4.99,
+      "quantity": 2
+    }
+  ],
+  "total": 22.97,
+  "order_type": "dine_in"
+}</textarea>
+                <button onclick="createOrder()" id="createBtn" disabled>Create Order</button>
+            </div>
+
+            <div class="container">
+                <h2>Update Order</h2>
+                <input type="text" id="updateOrderId" placeholder="Order ID (e.g., ORD-ABC123)" value="">
+                <textarea id="updatePayload" rows="6" placeholder="Enter updated payload as JSON">
+{
+  "customer_name": "John Doe Updated",
+  "table_number": 6,
+  "items": [
+    {
+      "name": "Burger",
+      "price": 12.99,
+      "quantity": 1
+    }
+  ],
+  "total": 12.99,
+  "status": "preparing"
+}</textarea>
+                <button onclick="updateOrder()" id="updateBtn" class="update-btn" disabled>Update Order</button>
+            </div>
+
+            <div class="container">
+                <h2>Delete Order</h2>
+                <input type="text" id="deleteOrderId" placeholder="Order ID (e.g., ORD-ABC123)" value="">
+                <button onclick="deleteOrder()" id="deleteBtn" class="delete-btn" disabled>Delete Order</button>
+            </div>
+        </div>
+
+        <div class="flex-item">
+            <div class="container">
+                <h2>Real-time Events</h2>
+                <button onclick="clearEvents()" style="width: auto; float: right; margin-bottom: 10px;">Clear Events</button>
+                <div id="events" class="events">
+                    <div style="color: #6c757d;">Waiting for events...</div>
+                </div>
+            </div>
+
+            <div class="container">
+                <h2>Connection Statistics</h2>
+                <div id="stats">
+                    <p><strong>Connection Time:</strong> <span id="connectionTime">-</span></p>
+                    <p><strong>Events Received:</strong> <span id="eventCount">0</span></p>
+                    <p><strong>Last Event:</strong> <span id="lastEvent">-</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let eventCount = 0;
+        let connectionTime = null;
+        let lastOrderId = null;
+
+        function updateStatus(connected) {
+            const statusEl = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const createBtn = document.getElementById('createBtn');
+            const updateBtn = document.getElementById('updateBtn');
+            const deleteBtn = document.getElementById('deleteBtn');
+
+            if (connected) {
+                statusEl.textContent = 'Connected to WebSocket server';
+                statusEl.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                createBtn.disabled = false;
+                updateBtn.disabled = false;
+                deleteBtn.disabled = false;
+                connectionTime = new Date();
+                updateConnectionTime();
+            } else {
+                statusEl.textContent = 'Disconnected from WebSocket server';
+                statusEl.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                createBtn.disabled = true;
+                updateBtn.disabled = true;
+                deleteBtn.disabled = true;
+                connectionTime = null;
+                document.getElementById('connectionTime').textContent = '-';
+            }
+        }
+
+        function updateConnectionTime() {
+            if (connectionTime) {
+                const now = new Date();
+                const diff = Math.floor((now - connectionTime) / 1000);
+                document.getElementById('connectionTime').textContent = `${diff}s`;
+                setTimeout(updateConnectionTime, 1000);
+            }
+        }
+
+        function addEvent(type, data) {
+            eventCount++;
+            const eventsEl = document.getElementById('events');
+            
+            // Clear initial message
+            if (eventCount === 1) {
+                eventsEl.innerHTML = '';
+            }
+            
+            const eventEl = document.createElement('div');
+            eventEl.className = `event-item event-${type.split('_')[1] || 'info'}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            eventEl.innerHTML = `
+                <strong>[${timestamp}] ${type}</strong><br>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            
+            eventsEl.appendChild(eventEl);
+            eventsEl.scrollTop = eventsEl.scrollHeight;
+            
+            // Update stats
+            document.getElementById('eventCount').textContent = eventCount;
+            document.getElementById('lastEvent').textContent = `${type} at ${timestamp}`;
+            
+            // Auto-fill order ID if it's a create event
+            if (type === 'order_created' && data.order_id) {
+                lastOrderId = data.order_id;
+                document.getElementById('updateOrderId').value = data.order_id;
+                document.getElementById('deleteOrderId').value = data.order_id;
+            }
+        }
+
+        function connect() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const apiKey = document.getElementById('apiKey').value;
+            
+            const options = {};
+            if (apiKey) {
+                options.auth = { apiKey: apiKey };
+            }
+            
+            socket = io(serverUrl, options);
+            
+            socket.on('connect', () => {
+                updateStatus(true);
+                addEvent('connected', { client_id: socket.id });
+            });
+            
+            socket.on('disconnect', (reason) => {
+                updateStatus(false);
+                addEvent('disconnected', { reason: reason });
+            });
+            
+            socket.on('order_created', (data) => {
+                addEvent('order_created', data);
+            });
+            
+            socket.on('order_updated', (data) => {
+                addEvent('order_updated', data);
+            });
+            
+            socket.on('order_deleted', (data) => {
+                addEvent('order_deleted', data);
+            });
+            
+            socket.on('error', (error) => {
+                addEvent('error', error);
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+        }
+
+        async function createOrder() {
+            const payload = document.getElementById('createPayload').value;
+            const apiKey = document.getElementById('apiKey').value;
+            
+            try {
+                const parsedPayload = JSON.parse(payload);
+                
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (apiKey) {
+                    headers['X-API-Key'] = apiKey;
+                }
+                
+                const response = await fetch(`${document.getElementById('serverUrl').value}/api/v1/orders`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(parsedPayload)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    addEvent('api_success', { action: 'create', result: result });
+                } else {
+                    addEvent('api_error', { action: 'create', error: result });
+                }
+            } catch (error) {
+                addEvent('api_error', { action: 'create', error: error.message });
+            }
+        }
+
+        async function updateOrder() {
+            const orderId = document.getElementById('updateOrderId').value;
+            const payload = document.getElementById('updatePayload').value;
+            const apiKey = document.getElementById('apiKey').value;
+            
+            if (!orderId) {
+                alert('Please enter an Order ID');
+                return;
+            }
+            
+            try {
+                const parsedPayload = JSON.parse(payload);
+                
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (apiKey) {
+                    headers['X-API-Key'] = apiKey;
+                }
+                
+                const response = await fetch(`${document.getElementById('serverUrl').value}/api/v1/orders/${orderId}`, {
+                    method: 'PUT',
+                    headers: headers,
+                    body: JSON.stringify(parsedPayload)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    addEvent('api_success', { action: 'update', result: result });
+                } else {
+                    addEvent('api_error', { action: 'update', error: result });
+                }
+            } catch (error) {
+                addEvent('api_error', { action: 'update', error: error.message });
+            }
+        }
+
+        async function deleteOrder() {
+            const orderId = document.getElementById('deleteOrderId').value;
+            const apiKey = document.getElementById('apiKey').value;
+            
+            if (!orderId) {
+                alert('Please enter an Order ID');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to delete order ${orderId}?`)) {
+                return;
+            }
+            
+            try {
+                const headers = {};
+                
+                if (apiKey) {
+                    headers['X-API-Key'] = apiKey;
+                }
+                
+                const response = await fetch(`${document.getElementById('serverUrl').value}/api/v1/orders/${orderId}`, {
+                    method: 'DELETE',
+                    headers: headers
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    addEvent('api_success', { action: 'delete', result: result });
+                    // Clear the order ID fields after successful deletion
+                    document.getElementById('updateOrderId').value = '';
+                    document.getElementById('deleteOrderId').value = '';
+                } else {
+                    addEvent('api_error', { action: 'delete', error: result });
+                }
+            } catch (error) {
+                addEvent('api_error', { action: 'delete', error: error.message });
+            }
+        }
+
+        function clearEvents() {
+            document.getElementById('events').innerHTML = '<div style="color: #6c757d;">Events cleared...</div>';
+            eventCount = 0;
+            document.getElementById('eventCount').textContent = '0';
+            document.getElementById('lastEvent').textContent = '-';
+        }
+
+        // Initialize
+        updateStatus(false);
+    </script>
+</body>
+</html>
