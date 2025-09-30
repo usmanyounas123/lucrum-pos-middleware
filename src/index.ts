@@ -106,8 +106,10 @@ setupDatabase()
     const wsPort = process.env.WS_PORT || 8080;
     
     httpServer.listen(port, () => {
-      logger.info(`Lucrum POS Middleware is running on port ${port}`);
+      logger.info(`Simple POS Middleware is running on port ${port}`);
       logger.info(`WebSocket server available on port ${wsPort}`);
+      logger.info(`API endpoints: /api/v1/orders (CREATE, UPDATE, DELETE)`);
+      logger.info(`WebSocket events: order_created, order_updated, order_deleted`);
       
       // Signal service started successfully for Windows services
       if (isWindowsService) {
@@ -116,7 +118,7 @@ setupDatabase()
         
         // Give a moment for everything to settle, then signal ready
         setTimeout(() => {
-          logger.info('Service is fully operational');
+          logger.info('Simple POS Middleware service is fully operational');
         }, 2000);
       }
     });

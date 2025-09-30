@@ -1,7 +1,7 @@
 {
-  "name": "lucrum-pos-middleware",
+  "name": "simple-pos-middleware",
   "version": "1.2.0",
-  "description": "Lucrum POS Middleware for managing orders between POS systems and KDS apps",
+  "description": "Ultra-simple POS middleware with just order_id and payload - WebSocket notifications for CREATE/UPDATE/DELETE",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",

@@ -24,19 +24,20 @@ export const setupDatabase = async () => {
     
     // Enable WAL mode for better performance
     db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = NORMAL');
+    db.pragma('cache_size = 1000');
     
-    // Create the orders table according to the specification
+    // Create ultra-simple orders table with just order_id and payload
     db.exec(`
       CREATE TABLE IF NOT EXISTS orders (
         order_id TEXT PRIMARY KEY,
-        payload TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        payload TEXT NOT NULL
       )
     `);
     
-    logger.info('SQLite database initialized successfully');
+    logger.info('Ultra-simple orders database initialized successfully');
     logger.info(`Database file: ${dbPath}`);
+    logger.info('Schema: orders(order_id, payload)');
   } catch (error) {
     logger.error('Failed to initialize database:', error);
     throw error;
@@ -56,8 +57,8 @@ export const createOrder = (payload: any): string => {
   const payloadJson = JSON.stringify(payload);
   
   const stmt = db.prepare(`
-    INSERT INTO orders (order_id, payload, created_at, updated_at)
-    VALUES (?, ?, datetime('now'), datetime('now'))
+    INSERT INTO orders (order_id, payload)
+    VALUES (?, ?)
   `);
   
   try {
@@ -75,7 +76,7 @@ export const updateOrder = (orderId: string, payload: any): boolean => {
   
   const stmt = db.prepare(`
     UPDATE orders 
-    SET payload = ?, updated_at = datetime('now')
+    SET payload = ?
     WHERE order_id = ?
   `);
   
@@ -116,7 +117,7 @@ export const deleteOrder = (orderId: string): boolean => {
 
 export const getOrder = (orderId: string): any | null => {
   const stmt = db.prepare(`
-    SELECT order_id, payload, created_at, updated_at 
+    SELECT order_id, payload 
     FROM orders 
     WHERE order_id = ?
   `);
@@ -126,9 +127,7 @@ export const getOrder = (orderId: string): any | null => {
     if (result) {
       return {
         order_id: result.order_id,
-        payload: JSON.parse(result.payload),
-        created_at: result.created_at,
-        updated_at: result.updated_at
+        payload: JSON.parse(result.payload)
       };
     }
     return null;
@@ -140,18 +139,15 @@ export const getOrder = (orderId: string): any | null => {
 
 export const getAllOrders = (): any[] => {
   const stmt = db.prepare(`
-    SELECT order_id, payload, created_at, updated_at 
-    FROM orders 
-    ORDER BY created_at DESC
+    SELECT order_id, payload 
+    FROM orders
   `);
   
   try {
     const results = stmt.all() as any[];
     return results.map(result => ({
       order_id: result.order_id,
-      payload: JSON.parse(result.payload),
-      created_at: result.created_at,
-      updated_at: result.updated_at
+      payload: JSON.parse(result.payload)
     }));
   } catch (error) {
     logger.error('Failed to get all orders:', error);

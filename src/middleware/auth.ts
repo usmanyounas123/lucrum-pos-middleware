@@ -1,47 +1,43 @@
 import { Request, Response, NextFunction } from 'express';
-import { getDatabase } from '../services/database';
 import { getLogger } from '../services/logger';
 
 const logger = getLogger();
-const db = getDatabase();
 
 export const validateApiKey = (req: Request, res: Response, next: NextFunction) => {
   const apiKey = req.headers['x-api-key'] as string;
   
   if (!apiKey) {
-    return res.status(401).json({ error: 'API key is required' });
+    return res.status(401).json({ 
+      success: false,
+      error: 'API key is required. Add X-API-Key header.' 
+    });
   }
   
-  try {
-    const db = getDatabase();
-    const query = 'SELECT * FROM clients WHERE api_key = ? AND is_active = 1';
-    const stmt = db.prepare(query);
-    const row = stmt.get([apiKey]);
-    
-    if (!row) {
-      return res.status(401).json({ error: 'Invalid API key' });
-    }
-    
-    // Update last connected timestamp
-    const updateQuery = 'UPDATE clients SET last_connected = CURRENT_TIMESTAMP WHERE api_key = ?';
-    const updateStmt = db.prepare(updateQuery);
-    updateStmt.run([apiKey]);
-    
-    // Add client info to request
-    (req as any).client = row;
-    next();
-  } catch (error) {
-    logger.error('Database error in auth middleware:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  // Simple validation against environment variable
+  const validApiKey = process.env.ADMIN_API_KEY;
+  
+  if (!validApiKey) {
+    logger.error('ADMIN_API_KEY not configured in environment');
+    return res.status(500).json({ 
+      success: false,
+      error: 'Server configuration error' 
+    });
   }
+  
+  if (apiKey !== validApiKey) {
+    logger.warn(`Invalid API key attempt: ${apiKey.substring(0, 8)}...`);
+    return res.status(401).json({ 
+      success: false,
+      error: 'Invalid API key' 
+    });
+  }
+  
+  // Add simple client info to request for logging
+  (req as any).client = {
+    apiKey: apiKey,
+    authenticated: true,
+    timestamp: new Date().toISOString()
+  };
+  
+  next();
 };
-
-// Extend Express Request interface
-declare global {
-  namespace Express {
-    interface Request {
-      clientId: string;
-      clientType: string;
-    }
-  }
-}

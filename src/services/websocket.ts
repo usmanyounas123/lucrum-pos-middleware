@@ -5,91 +5,80 @@ const logger = getLogger();
 const connectedClients = new Map<string, Socket>();
 
 export const setupWebSocket = (io: Server) => {
-  // Optional authentication middleware - can be disabled for simplicity
+  // Simple authentication middleware
   io.use(async (socket, next) => {
-    // For now, allow all connections without authentication
-    // You can add API key validation here if needed
+    const apiKey = socket.handshake.auth?.apiKey;
+    
+    // Optional API key validation - comment out for no auth
+    if (process.env.ADMIN_API_KEY && apiKey !== process.env.ADMIN_API_KEY) {
+      logger.warn(`WebSocket authentication failed for ${socket.id}`);
+      next(new Error('Invalid API key'));
+      return;
+    }
+    
     next();
   });
 
   io.on('connection', (socket: Socket) => {
-    const clientId = socket.handshake.headers['x-client-id'] as string || socket.id;
-    const clientType = socket.handshake.headers['x-client-type'] as string || 'unknown';
-    
+    const clientId = socket.id;
     connectedClients.set(clientId, socket);
-    logger.info(`Client connected: ${clientId} (type: ${clientType})`);
     
-    // Send welcome message to newly connected client
-    socket.emit('connection_status', {
-      status: 'connected',
+    logger.info(`WebSocket client connected: ${clientId}`);
+    
+    // Send connection confirmation
+    socket.emit('connected', {
       client_id: clientId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      events: ['order_created', 'order_updated', 'order_deleted']
     });
 
-    // Handle client disconnect
+    // Handle disconnect
     socket.on('disconnect', (reason) => {
       connectedClients.delete(clientId);
-      logger.info(`Client disconnected: ${clientId} (reason: ${reason})`);
+      logger.info(`WebSocket client disconnected: ${clientId} (${reason})`);
     });
 
-    // Handle socket errors
+    // Handle errors
     socket.on('error', (error) => {
-      logger.error(`Socket error from ${clientId}:`, error);
+      logger.error(`WebSocket error from ${clientId}:`, error);
     });
 
-    // Optional: Handle heartbeat/ping from clients
+    // Simple ping/pong for connection health
     socket.on('ping', () => {
-      socket.emit('pong');
+      socket.emit('pong', { timestamp: new Date().toISOString() });
     });
   });
+  
+  logger.info('Simple WebSocket server initialized');
 };
 
-// Broadcast to all connected clients
+// Broadcast order events to all connected clients
 export const broadcastToAll = (event: string, data: any) => {
-  logger.info(`Broadcasting event "${event}" to ${connectedClients.size} clients`);
+  if (connectedClients.size === 0) {
+    logger.debug(`No clients connected to broadcast event: ${event}`);
+    return;
+  }
+  
+  logger.info(`Broadcasting ${event} to ${connectedClients.size} clients`);
+  
   connectedClients.forEach((socket, clientId) => {
     try {
-      socket.emit(event, data);
+      socket.emit(event, {
+        ...data,
+        broadcast_timestamp: new Date().toISOString()
+      });
     } catch (error) {
-      logger.error(`Failed to emit to client ${clientId}:`, error);
+      logger.error(`Failed to broadcast to client ${clientId}:`, error);
+      // Remove dead connections
+      connectedClients.delete(clientId);
     }
   });
 };
 
-// Get list of connected client IDs
-export const getConnectedClients = () => {
-  return Array.from(connectedClients.keys());
-};
-
-// Get number of connected clients
-export const getClientCount = () => {
-  return connectedClients.size;
-};
-
-// Disconnect a specific client
-export const disconnectClient = (clientId: string) => {
-  const socket = connectedClients.get(clientId);
-  if (socket) {
-    socket.disconnect();
-    connectedClients.delete(clientId);
-    logger.info(`Forcibly disconnected client: ${clientId}`);
-    return true;
-  }
-  return false;
-};
-
-// Send message to specific client
-export const sendToClient = (clientId: string, event: string, data: any) => {
-  const socket = connectedClients.get(clientId);
-  if (socket) {
-    try {
-      socket.emit(event, data);
-      return true;
-    } catch (error) {
-      logger.error(`Failed to send to client ${clientId}:`, error);
-      return false;
-    }
-  }
-  logger.warn(`Client ${clientId} not found`);
-  return false;
+// Get connection statistics
+export const getConnectionStats = () => {
+  return {
+    connected_clients: connectedClients.size,
+    client_ids: Array.from(connectedClients.keys())
+  };
 };
