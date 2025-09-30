@@ -1,6 +1,6 @@
 {
   "name": "lucrum-pos-middleware",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Lucrum POS Middleware for managing orders between POS systems and KDS apps",
   "main": "dist/index.js",
   "scripts": {

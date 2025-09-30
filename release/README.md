@@ -1,8 +1,8 @@
-# 🚀 POS Middleware v1.0.0 - Windows Release
+# 🚀 POS Middleware v1.2.0 - Windows Release
 
 ## 📦 What's Included
 
-This release package contains a complete, standalone POS Middleware application with Lucrum integration for Windows.
+This release package contains a complete, standalone POS Middleware application with Lucrum integration for Windows. Version 1.2.0 includes enhanced stability, improved documentation, and production-ready optimizations.
 
 ### 📁 Package Contents
 
@@ -198,7 +198,7 @@ For issues:
 
 ---
 
-**POS Middleware v1.0.0** - Complete restaurant management solution with Lucrum integration and Windows service support.
+**POS Middleware v1.2.0** - Complete restaurant management solution with Lucrum integration and Windows service support. Enhanced with production-ready optimizations and improved stability.
 
 Ready for production deployment! 🚀
 
