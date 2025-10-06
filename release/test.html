@@ -114,35 +114,95 @@
     </style>
 </head>
 <body>
-    <h1>🚀 Simple POS Middleware - WebSocket Test Client</h1>
+    <h1>🚀 Lucrum POS Middleware - API Test Client</h1>
+    
+    <div class="container" style="background: #fff3cd; border: 1px solid #856404;">
+        <h2>🔧 Port Configuration Notice</h2>
+        <p><strong>Current Configuration:</strong></p>
+        <ul>
+            <li>✅ <strong>New Version:</strong> Port 3000 (recommended)</li>
+            <li>⚠️ <strong>Legacy Version:</strong> Port 8081 (if you're using an older version)</li>
+        </ul>
+        <p><strong>💡 If API calls fail:</strong></p>
+        <ol>
+            <li>Try changing the server URL to <code>http://localhost:8081</code></li>
+            <li>Or restart the service to use the new port 3000 configuration</li>
+        </ol>
+        <button onclick="autoDetectPort()" style="background: #17a2b8; color: white; padding: 8px 16px;">🔍 Auto-Detect Port</button>
+        <div id="portDetectionResult" style="margin-top: 10px; font-family: monospace; font-size: 12px;"></div>
+    </div>
+
+    <div class="container" style="background: #fff3cd; border: 1px solid #856404;">
+        <h2>📋 Important: Data Structure Differences</h2>
+        <div style="display: flex; gap: 20px;">
+            <div style="flex: 1;">
+                <h4>🔄 API Requests (What YOU send):</h4>
+                <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 12px;">{
+  "customer_name": "John Doe",
+  "table_number": 5,
+  "items": [...],
+  "total": 22.97
+}</pre>
+                <small><strong>Note:</strong> Send raw order data directly, NOT wrapped in "payload"</small>
+            </div>
+            <div style="flex: 1;">
+                <h4>📡 WebSocket Events (What you RECEIVE):</h4>
+                <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 12px;">{
+  "order_id": "ORD-ABC123",
+  "payload": {
+    "customer_name": "John Doe",
+    "table_number": 5,
+    "items": [...],
+    "total": 22.97
+  }
+}</pre>
+                <small><strong>Note:</strong> WebSocket wraps your data in "payload" + adds "order_id"</small>
+            </div>
+        </div>
+    </div>
     
     <div class="container">
-        <h2>Connection Status</h2>
+        <h2>📡 Connection Status</h2>
         <div id="status" class="status disconnected">Disconnected</div>
+        
+        <div style="background: #e3f2fd; border: 1px solid #2196f3; border-radius: 4px; padding: 10px; margin: 10px 0; font-size: 14px;">
+            <strong>💡 What to Expect:</strong><br>
+            🟢 <strong>WebSocket:</strong> Connects immediately<br>
+            🟢 <strong>/api/health:</strong> Works immediately (returns "basic_operational" then "fully_operational")<br>
+            🟡 <strong>/api/v1/orders:</strong> Returns "503 Service Unavailable" during 10-30s database initialization<br>
+            🟢 <strong>Full API:</strong> Available after database initialization completes
+        </div>
         
         <div class="flex-container">
             <div class="flex-item">
-                <label>Server URL:</label>
+                <label>🌐 Server URL:</label>
                 <input type="text" id="serverUrl" value="http://localhost:8081" placeholder="http://localhost:8081">
             </div>
             <div class="flex-item">
-                <label>API Key (optional):</label>
-                <input type="text" id="apiKey" value="" placeholder="your-api-key">
+                <label>🔑 API Key (REQUIRED):</label>
+                <input type="text" id="apiKey" value="change-this-unique-api-key-for-production" placeholder="your-api-key">
+                <small style="color: #6c757d;">💡 Default: change-this-unique-api-key-for-production</small>
             </div>
         </div>
         
-        <button onclick="connect()" id="connectBtn">Connect</button>
-        <button onclick="disconnect()" id="disconnectBtn" disabled>Disconnect</button>
+        <button onclick="connect()" id="connectBtn">🔌 Connect WebSocket</button>
+        <button onclick="disconnect()" id="disconnectBtn" disabled>🔌 Disconnect</button>
+        <button onclick="testAPI()" id="testBtn">🩺 Test API Health</button>
     </div>
 
     <div class="flex-container">
         <div class="flex-item">
             <div class="container">
-                <h2>Create Order</h2>
-                <textarea id="createPayload" rows="8" placeholder="Enter order payload as JSON">
+                <h2>➕ Create Order</h2>
+                <p><strong>📍 Endpoint:</strong> POST /api/v1/orders</p>
+                <p><strong>📤 Send:</strong> Raw order data (just your order object)</p>
+                <p><strong>📥 Get:</strong> { "success": true, "order_id": "ORD-XXXXX" }</p>
+                <p><strong>🔔 WebSocket Broadcast:</strong> { "order_id": "ORD-XXX", "payload": { your_order_data } }</p>
+                <textarea id="createPayload" rows="10" placeholder="Enter your order data as JSON (NOT wrapped in payload object)">
 {
   "customer_name": "John Doe",
   "table_number": 5,
+  "branch": "Main Store",
   "items": [
     {
       "name": "Burger",
@@ -150,59 +210,84 @@
       "quantity": 1
     },
     {
-      "name": "Fries",
+      "name": "Fries", 
       "price": 4.99,
       "quantity": 2
     }
   ],
   "total": 22.97,
-  "order_type": "dine_in"
+  "order_type": "dine_in",
+  "status": "new",
+  "notes": "Extra sauce on burger"
 }</textarea>
-                <button onclick="createOrder()" id="createBtn" disabled>Create Order</button>
+                <button onclick="createOrder()" id="createBtn" disabled>➕ Create Order</button>
             </div>
 
             <div class="container">
-                <h2>Update Order</h2>
-                <input type="text" id="updateOrderId" placeholder="Order ID (e.g., ORD-ABC123)" value="">
-                <textarea id="updatePayload" rows="6" placeholder="Enter updated payload as JSON">
+                <h2>✏️ Update Order</h2>
+                <p><strong>📍 Endpoint:</strong> PUT /api/v1/orders/{order_id}</p>
+                <p><strong>📤 Send:</strong> Raw updated order data (just your order object)</p>
+                <p><strong>📥 Get:</strong> { "success": true, "order_id": "ORD-XXXXX" }</p>
+                <p><strong>🔔 WebSocket Broadcast:</strong> { "order_id": "ORD-XXX", "payload": { your_updated_data } }</p>
+                <input type="text" id="updateOrderId" placeholder="🆔 Order ID (e.g., ORD-ABC123)" value="">
+                <textarea id="updatePayload" rows="8" placeholder="Enter updated order data as JSON (NOT wrapped in payload object)">
 {
   "customer_name": "John Doe Updated",
   "table_number": 6,
+  "branch": "Main Store",
   "items": [
     {
-      "name": "Burger",
-      "price": 12.99,
+      "name": "Burger Deluxe",
+      "price": 15.99,
       "quantity": 1
     }
   ],
-  "total": 12.99,
-  "status": "preparing"
+  "total": 15.99,
+  "status": "preparing",
+  "notes": "Order updated - no fries"
 }</textarea>
-                <button onclick="updateOrder()" id="updateBtn" class="update-btn" disabled>Update Order</button>
+                <button onclick="updateOrder()" id="updateBtn" class="update-btn" disabled>✏️ Update Order</button>
             </div>
 
             <div class="container">
-                <h2>Delete Order</h2>
-                <input type="text" id="deleteOrderId" placeholder="Order ID (e.g., ORD-ABC123)" value="">
-                <button onclick="deleteOrder()" id="deleteBtn" class="delete-btn" disabled>Delete Order</button>
+                <h2>🗑️ Delete Order</h2>
+                <p><strong>📍 Endpoint:</strong> DELETE /api/v1/orders/{order_id}</p>
+                <p><strong>📤 Send:</strong> Order ID in URL (no body needed)</p>
+                <p><strong>📥 Get:</strong> { "success": true, "order_id": "ORD-XXXXX" }</p>
+                <p><strong>🔔 WebSocket Broadcast:</strong> { "order_id": "ORD-XXX", "payload": { deleted_order_data } }</p>
+                <input type="text" id="deleteOrderId" placeholder="🆔 Order ID (e.g., ORD-ABC123)" value="">
+                <button onclick="deleteOrder()" id="deleteBtn" class="delete-btn" disabled>🗑️ Delete Order</button>
             </div>
         </div>
 
         <div class="flex-item">
             <div class="container">
-                <h2>Real-time Events</h2>
-                <button onclick="clearEvents()" style="width: auto; float: right; margin-bottom: 10px;">Clear Events</button>
+                <h2>📊 Real-time Events</h2>
+                <p><strong>🔄 Auto-broadcast when:</strong> Orders created/updated/deleted</p>
+                <button onclick="clearEvents()" style="width: auto; float: right; margin-bottom: 10px;">🧹 Clear Events</button>
                 <div id="events" class="events">
-                    <div style="color: #6c757d;">Waiting for events...</div>
+                    <div style="color: #6c757d;">🔄 Waiting for events...</div>
                 </div>
             </div>
 
             <div class="container">
-                <h2>Connection Statistics</h2>
+                <h2>📈 Connection Statistics</h2>
                 <div id="stats">
-                    <p><strong>Connection Time:</strong> <span id="connectionTime">-</span></p>
-                    <p><strong>Events Received:</strong> <span id="eventCount">0</span></p>
-                    <p><strong>Last Event:</strong> <span id="lastEvent">-</span></p>
+                    <p><strong>⏰ Connection Time:</strong> <span id="connectionTime">-</span></p>
+                    <p><strong>📊 Events Received:</strong> <span id="eventCount">0</span></p>
+                    <p><strong>🕐 Last Event:</strong> <span id="lastEvent">-</span></p>
+                    <p><strong>🆔 Last Order ID:</strong> <span id="lastOrderId">-</span></p>
+                </div>
+            </div>
+
+            <div class="container">
+                <h2>🩺 API Quick Tests</h2>
+                <button onclick="testSimpleConnection()" style="width: 100%; margin: 5px 0; background: #17a2b8;">🔌 Test Basic Connection</button>
+                <button onclick="testHealthEndpoint()" style="width: 100%; margin: 5px 0;">🏥 Test /api/health</button>
+                <button onclick="testRootEndpoint()" style="width: 100%; margin: 5px 0;">🏠 Test / (root)</button>
+                <button onclick="getAllOrders()" style="width: 100%; margin: 5px 0;">📋 Get All Orders</button>
+                <div id="quickTestResults" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto;">
+                    Ready for testing...
                 </div>
             </div>
         </div>
@@ -223,7 +308,7 @@
             const deleteBtn = document.getElementById('deleteBtn');
 
             if (connected) {
-                statusEl.textContent = 'Connected to WebSocket server';
+                statusEl.textContent = '✅ Connected to WebSocket server';
                 statusEl.className = 'status connected';
                 connectBtn.disabled = true;
                 disconnectBtn.disabled = false;
@@ -232,8 +317,9 @@
                 deleteBtn.disabled = false;
                 connectionTime = new Date();
                 updateConnectionTime();
+                addEvent('websocket_connected', { server: document.getElementById('serverUrl').value });
             } else {
-                statusEl.textContent = 'Disconnected from WebSocket server';
+                statusEl.textContent = '❌ Disconnected from WebSocket server';
                 statusEl.className = 'status disconnected';
                 connectBtn.disabled = false;
                 disconnectBtn.disabled = true;
@@ -284,28 +370,53 @@
                 lastOrderId = data.order_id;
                 document.getElementById('updateOrderId').value = data.order_id;
                 document.getElementById('deleteOrderId').value = data.order_id;
+                document.getElementById('lastOrderId').textContent = data.order_id;
             }
         }
 
         function connect() {
+            // Prevent multiple connections
+            if (socket && socket.connected) {
+                addEvent('connection_warning', { message: 'Already connected to WebSocket' });
+                return;
+            }
+            
+            // Disconnect existing connection if any
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+            
             const serverUrl = document.getElementById('serverUrl').value;
             const apiKey = document.getElementById('apiKey').value;
             
-            const options = {};
+            const options = {
+                timeout: 10000, // 10 second timeout
+                forceNew: true, // Force new connection
+                reconnection: false // Disable auto-reconnection to prevent duplicates
+            };
+            
             if (apiKey) {
                 options.auth = { apiKey: apiKey };
             }
+            
+            addEvent('websocket_connecting', { server: serverUrl });
             
             socket = io(serverUrl, options);
             
             socket.on('connect', () => {
                 updateStatus(true);
-                addEvent('connected', { client_id: socket.id });
+                addEvent('websocket_connected', { client_id: socket.id, server: serverUrl });
             });
             
             socket.on('disconnect', (reason) => {
                 updateStatus(false);
-                addEvent('disconnected', { reason: reason });
+                addEvent('websocket_disconnected', { reason: reason });
+            });
+            
+            socket.on('connect_error', (error) => {
+                updateStatus(false);
+                addEvent('websocket_error', { error: error.message });
             });
             
             socket.on('order_created', (data) => {
@@ -321,14 +432,16 @@
             });
             
             socket.on('error', (error) => {
-                addEvent('error', error);
+                addEvent('websocket_general_error', error);
             });
         }
 
         function disconnect() {
             if (socket) {
+                addEvent('websocket_disconnecting', { message: 'Manually disconnecting...' });
                 socket.disconnect();
                 socket = null;
+                updateStatus(false);
             }
         }
 
@@ -336,16 +449,26 @@
             const payload = document.getElementById('createPayload').value;
             const apiKey = document.getElementById('apiKey').value;
             
+            if (!apiKey) {
+                addEvent('api_error', { action: 'create', error: 'API Key is required' });
+                return;
+            }
+            
             try {
                 const parsedPayload = JSON.parse(payload);
                 
                 const headers = {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-API-Key': apiKey
                 };
                 
-                if (apiKey) {
-                    headers['X-API-Key'] = apiKey;
-                }
+                addEvent('api_request', { 
+                    action: 'create', 
+                    url: `${document.getElementById('serverUrl').value}/api/v1/orders`,
+                    method: 'POST',
+                    headers: headers,
+                    payload: parsedPayload 
+                });
                 
                 const response = await fetch(`${document.getElementById('serverUrl').value}/api/v1/orders`, {
                     method: 'POST',
@@ -358,7 +481,12 @@
                 if (response.ok) {
                     addEvent('api_success', { action: 'create', result: result });
                 } else {
-                    addEvent('api_error', { action: 'create', error: result });
+                    addEvent('api_error', { 
+                        action: 'create', 
+                        status: response.status,
+                        statusText: response.statusText,
+                        error: result 
+                    });
                 }
             } catch (error) {
                 addEvent('api_error', { action: 'create', error: error.message });
@@ -371,7 +499,12 @@
             const apiKey = document.getElementById('apiKey').value;
             
             if (!orderId) {
-                alert('Please enter an Order ID');
+                addEvent('api_error', { action: 'update', error: 'Order ID is required' });
+                return;
+            }
+            
+            if (!apiKey) {
+                addEvent('api_error', { action: 'update', error: 'API Key is required' });
                 return;
             }
             
@@ -379,12 +512,17 @@
                 const parsedPayload = JSON.parse(payload);
                 
                 const headers = {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-API-Key': apiKey
                 };
                 
-                if (apiKey) {
-                    headers['X-API-Key'] = apiKey;
-                }
+                addEvent('api_request', { 
+                    action: 'update', 
+                    url: `${document.getElementById('serverUrl').value}/api/v1/orders/${orderId}`,
+                    method: 'PUT',
+                    headers: headers,
+                    payload: parsedPayload 
+                });
                 
                 const response = await fetch(`${document.getElementById('serverUrl').value}/api/v1/orders/${orderId}`, {
                     method: 'PUT',
@@ -397,7 +535,12 @@
                 if (response.ok) {
                     addEvent('api_success', { action: 'update', result: result });
                 } else {
-                    addEvent('api_error', { action: 'update', error: result });
+                    addEvent('api_error', { 
+                        action: 'update', 
+                        status: response.status,
+                        statusText: response.statusText,
+                        error: result 
+                    });
                 }
             } catch (error) {
                 addEvent('api_error', { action: 'update', error: error.message });
@@ -409,7 +552,12 @@
             const apiKey = document.getElementById('apiKey').value;
             
             if (!orderId) {
-                alert('Please enter an Order ID');
+                addEvent('api_error', { action: 'delete', error: 'Order ID is required' });
+                return;
+            }
+            
+            if (!apiKey) {
+                addEvent('api_error', { action: 'delete', error: 'API Key is required' });
                 return;
             }
             
@@ -418,11 +566,16 @@
             }
             
             try {
-                const headers = {};
+                const headers = {
+                    'X-API-Key': apiKey
+                };
                 
-                if (apiKey) {
-                    headers['X-API-Key'] = apiKey;
-                }
+                addEvent('api_request', { 
+                    action: 'delete', 
+                    url: `${document.getElementById('serverUrl').value}/api/v1/orders/${orderId}`,
+                    method: 'DELETE',
+                    headers: headers
+                });
                 
                 const response = await fetch(`${document.getElementById('serverUrl').value}/api/v1/orders/${orderId}`, {
                     method: 'DELETE',
@@ -437,7 +590,12 @@
                     document.getElementById('updateOrderId').value = '';
                     document.getElementById('deleteOrderId').value = '';
                 } else {
-                    addEvent('api_error', { action: 'delete', error: result });
+                    addEvent('api_error', { 
+                        action: 'delete', 
+                        status: response.status,
+                        statusText: response.statusText,
+                        error: result 
+                    });
                 }
             } catch (error) {
                 addEvent('api_error', { action: 'delete', error: error.message });
@@ -445,14 +603,287 @@
         }
 
         function clearEvents() {
-            document.getElementById('events').innerHTML = '<div style="color: #6c757d;">Events cleared...</div>';
+            document.getElementById('events').innerHTML = '<div style="color: #6c757d;">🧹 Events cleared...</div>';
             eventCount = 0;
             document.getElementById('eventCount').textContent = '0';
             document.getElementById('lastEvent').textContent = '-';
         }
 
+        // New testing functions
+        async function testAPI() {
+            addEvent('test_start', { message: 'Testing API health endpoints...' });
+            await testHealthEndpoint();
+            await testRootEndpoint();
+        }
+
+        async function testHealthEndpoint() {
+            try {
+                addEvent('health_test_start', { url: `${document.getElementById('serverUrl').value}/api/health` });
+                
+                // Add retry logic for health check
+                let retries = 3;
+                let lastError;
+                
+                for (let i = 0; i < retries; i++) {
+                    try {
+                        const response = await fetch(`${document.getElementById('serverUrl').value}/api/health`, {
+                            method: 'GET',
+                            mode: 'cors',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Cache-Control': 'no-cache'
+                            },
+                            cache: 'no-cache'
+                        });
+                        
+                        addEvent('health_check_response', { 
+                            status: response.status, 
+                            statusText: response.statusText,
+                            headers: Object.fromEntries(response.headers.entries()),
+                            attempt: i + 1
+                        });
+                        
+                        // Check if response is JSON or HTML
+                        const contentType = response.headers.get('content-type');
+                        
+                        if (contentType && contentType.includes('application/json')) {
+                            const result = await response.json();
+                            
+                            if (response.ok) {
+                                document.getElementById('quickTestResults').innerHTML = 
+                                    `✅ Health Check: OK (attempt ${i + 1})<br><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                                addEvent('health_check_success', { ...result, attempt: i + 1 });
+                                return; // Success, exit retry loop
+                            } else {
+                                throw new Error(`HTTP ${response.status}: ${JSON.stringify(result)}`);
+                            }
+                        } else {
+                            // Probably got HTML (404 page)
+                            const htmlContent = await response.text();
+                            throw new Error(`Got ${contentType || 'unknown'} instead of JSON (${response.status}): ${htmlContent.substring(0, 200)}...`);
+                        }
+                    } catch (error) {
+                        lastError = error;
+                        addEvent('health_check_detailed_error', { 
+                            attempt: i + 1, 
+                            error: error.message,
+                            errorType: error.constructor.name,
+                            stack: error.stack ? error.stack.substring(0, 300) : 'No stack trace'
+                        });
+                        
+                        if (i < retries - 1) {
+                            addEvent('health_check_retry', { attempt: i + 1, error: error.message });
+                            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+                        }
+                    }
+                }
+                
+                // All retries failed
+                throw lastError;
+                
+            } catch (error) {
+                document.getElementById('quickTestResults').innerHTML = 
+                    `❌ Health Check Failed (after 3 attempts): ${error.message}<br>
+                    <small>🔍 Analysis:<br>
+                    • Root endpoint (/) works ✅<br>
+                    • Health endpoint (/api/health) fails ❌<br>
+                    • Likely: Route not registered yet<br>
+                    • Wait for database initialization to complete</small>`;
+                addEvent('health_check_failed', { 
+                    error: error.message, 
+                    diagnosis: '/api/health route not registered - database still initializing',
+                    solution: 'Wait for database initialization - try again in 30 seconds'
+                });
+            }
+        }
+
+        async function testRootEndpoint() {
+            try {
+                addEvent('root_test_start', { url: `${document.getElementById('serverUrl').value}/` });
+                
+                const response = await fetch(`${document.getElementById('serverUrl').value}/`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    addEvent('root_endpoint_success', result);
+                } else {
+                    addEvent('root_endpoint_failed', { status: response.status, error: result });
+                }
+            } catch (error) {
+                addEvent('root_endpoint_error', { 
+                    error: error.message,
+                    troubleshooting: 'Check if middleware is running and accessible'
+                });
+            }
+        }
+
+        async function getAllOrders() {
+            const apiKey = document.getElementById('apiKey').value;
+            
+            if (!apiKey) {
+                addEvent('api_error', { action: 'get_all', error: 'API Key is required' });
+                return;
+            }
+            
+            try {
+                const headers = {
+                    'X-API-Key': apiKey
+                };
+                
+                const response = await fetch(`${document.getElementById('serverUrl').value}/api/v1/orders`, {
+                    method: 'GET',
+                    headers: headers
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('quickTestResults').innerHTML = 
+                        `📋 Orders Retrieved: ${result.count || 0} orders<br><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                    addEvent('get_orders_success', result);
+                } else {
+                    document.getElementById('quickTestResults').innerHTML = 
+                        `❌ Get Orders Failed: ${response.status}<br><pre>${JSON.stringify(result, null, 2)}</pre>`;
+                    addEvent('get_orders_failed', { status: response.status, error: result });
+                }
+            } catch (error) {
+                document.getElementById('quickTestResults').innerHTML = 
+                    `❌ Get Orders Error: ${error.message}`;
+                addEvent('get_orders_error', { error: error.message });
+            }
+        }
+
+        // Simple connection test using basic HTTP HEAD request
+        async function testSimpleConnection() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const url = new URL(serverUrl);
+            
+            try {
+                addEvent('simple_connection_test', { testing: `${url.hostname}:${url.port}` });
+                
+                // Try a simple fetch with minimal options
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+                
+                const response = await fetch(serverUrl, {
+                    method: 'HEAD',
+                    signal: controller.signal,
+                    mode: 'no-cors' // This bypasses CORS issues
+                });
+                
+                clearTimeout(timeoutId);
+                
+                document.getElementById('quickTestResults').innerHTML = 
+                    `✅ Basic Connection: Server is reachable<br>
+                    <small>Server responding on ${url.hostname}:${url.port}<br>
+                    Next: Try API health check</small>`;
+                    
+                addEvent('simple_connection_success', { 
+                    message: 'Server is reachable',
+                    next_step: 'Try API health check'
+                });
+                
+            } catch (error) {
+                document.getElementById('quickTestResults').innerHTML = 
+                    `❌ Connection Failed: ${error.message}<br>
+                    <small>Troubleshooting steps:<br>
+                    1. Check if middleware is running (status.bat)<br>
+                    2. Verify port ${url.port} is not blocked<br>
+                    3. Check Windows Firewall<br>
+                    4. Try: start.bat</small>`;
+                    
+                addEvent('simple_connection_failed', { 
+                    error: error.message,
+                    steps: [
+                        'Run status.bat to check application',
+                        `Verify port ${url.port} accessibility`,
+                        'Check firewall settings',
+                        'Try restarting with start.bat'
+                    ]
+                });
+            }
+        }
+
+        // Auto-detect which port the server is running on
+        async function autoDetectPort() {
+            const ports = [3000, 8081];
+            const resultDiv = document.getElementById('portDetectionResult');
+            
+            resultDiv.innerHTML = '🔍 Detecting server port...';
+            
+            for (const port of ports) {
+                try {
+                    const testUrl = `http://localhost:${port}`;
+                    addEvent('port_detection', { testing: testUrl });
+                    
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 3000);
+                    
+                    const response = await fetch(`${testUrl}/api/health`, {
+                        method: 'GET',
+                        signal: controller.signal,
+                        headers: {
+                            'Accept': 'application/json',
+                            'Cache-Control': 'no-cache'
+                        }
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        
+                        // Found working port - update the UI
+                        document.getElementById('serverUrl').value = testUrl;
+                        resultDiv.innerHTML = `✅ Found server on port ${port}!<br><small>Updated server URL automatically</small>`;
+                        
+                        addEvent('port_detection_success', { 
+                            found_port: port,
+                            url: testUrl,
+                            health_response: result
+                        });
+                        
+                        // Auto-test the health endpoint
+                        setTimeout(() => testHealthEndpoint(), 1000);
+                        return;
+                    }
+                    
+                } catch (error) {
+                    addEvent('port_detection_failed', { port: port, error: error.message });
+                }
+            }
+            
+            // If no ports worked
+            resultDiv.innerHTML = `❌ No server found on ports ${ports.join(' or ')}<br>
+                <small>Please check if the middleware is running:<br>
+                1. Run status.bat<br>
+                2. Try start.bat if not running</small>`;
+                
+            addEvent('port_detection_complete', { 
+                result: 'no_server_found',
+                tested_ports: ports,
+                suggestion: 'Check if middleware is running'
+            });
+        }
+
         // Initialize
         updateStatus(false);
+        
+        // Auto-detect port and test health endpoint on page load
+        window.addEventListener('load', () => {
+            // First try to auto-detect the correct port
+            setTimeout(() => {
+                addEvent('auto_detect', { message: 'Auto-detecting server port...' });
+                autoDetectPort();
+            }, 2000); // Give the page time to load
+        });
     </script>
 </body>
 </html>

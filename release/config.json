@@ -1,0 +1,13 @@
+{
+  "api": {
+    "port": 8081,
+    "apiKey": "admin-key-change-this-in-production"
+  },
+  "websocket": {
+    "port": 8080
+  },
+  "database": {
+    "type": "sqlite",
+    "filename": "data.db"
+  }
+}

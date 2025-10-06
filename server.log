@@ -1,0 +1,15 @@
+[32minfo[39m: Running in console mode {"timestamp":"2025-10-02T06:38:14.760Z"}
+[32minfo[39m: 🔄 Starting database initialization... {"timestamp":"2025-10-02T06:38:14.774Z"}
+[32minfo[39m: Attempting database connection to: /home/usman/lucrum-pos-middleware/data.db {"timestamp":"2025-10-02T06:38:14.775Z"}
+[32minfo[39m: ✅ Ultra-simple orders database initialized successfully {"timestamp":"2025-10-02T06:38:14.781Z"}
+[32minfo[39m: ✅ Database file: /home/usman/lucrum-pos-middleware/data.db {"timestamp":"2025-10-02T06:38:14.781Z"}
+[32minfo[39m: ✅ Schema: orders(order_id, payload, created_at, updated_at) {"timestamp":"2025-10-02T06:38:14.781Z"}
+[32minfo[39m: ✅ Database ready after 0 retries {"timestamp":"2025-10-02T06:38:14.782Z"}
+[32minfo[39m: 🚀 HTTP Server started on port 8081 - initializing database... {"timestamp":"2025-10-02T06:38:14.783Z"}
+[32minfo[39m: 🌐 Server accessible at http://localhost:8081 {"timestamp":"2025-10-02T06:38:14.784Z"}
+[32minfo[39m: ✅ SQLite database initialized successfully - full API now available {"timestamp":"2025-10-02T06:38:14.784Z"}
+[32minfo[39m: ✅ SQLite routes configured - API endpoints active {"timestamp":"2025-10-02T06:38:14.784Z"}
+[32minfo[39m: Simple WebSocket server initialized {"timestamp":"2025-10-02T06:38:14.785Z"}
+[32minfo[39m: ✅ WebSocket handlers configured {"timestamp":"2025-10-02T06:38:14.785Z"}
+[32minfo[39m: 🎉 Application fully initialized and ready! {"timestamp":"2025-10-02T06:38:14.785Z"}
+[33mwarn[39m: Invalid API key attempt: your_sec... {"timestamp":"2025-10-02T06:38:43.262Z"}

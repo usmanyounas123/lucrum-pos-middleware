@@ -1,31 +1,44 @@
 import { Router } from 'express';
 import { validateApiKey } from '../middleware/auth';
-import { getDatabase } from '../services/database';
+import { createOrder, updateOrder, deleteOrder, getOrder, getAllOrders } from '../services/database';
 import { getLogger } from '../services/logger';
 import { broadcastToAll } from '../services/websocket';
-import crypto from 'crypto';
 
 const router = Router();
 const logger = getLogger();
 
-// Generate simple UUID
-function generateOrderId(): string {
-  return 'ORD-' + crypto.randomBytes(8).toString('hex').toUpperCase();
-}
+// Debug endpoint to test API key validation
+router.get('/debug', validateApiKey, async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      message: 'API key validation successful',
+      timestamp: new Date().toISOString(),
+      api_key_received: req.headers['x-api-key'],
+      environment_key: process.env.ADMIN_API_KEY ? 'set' : 'not set'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Debug endpoint error'
+    });
+  }
+});
 
 // Create new order - accepts ANY JSON payload
-router.post('/orders', validateApiKey, (req, res) => {
+router.post('/orders', validateApiKey, async (req, res) => {
   try {
-    // Accept whatever JSON payload is sent - no validation of content
+    // Basic validation - ensure we have a payload
     const payload = req.body;
-    const orderId = generateOrderId();
-    const payloadJson = JSON.stringify(payload);
     
-    const db = getDatabase();
-    const query = `INSERT INTO orders (order_id, payload) VALUES (?, ?)`;
+    if (!payload || typeof payload !== 'object') {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Invalid payload: JSON object required' 
+      });
+    }
     
-    const stmt = db.prepare(query);
-    const result = stmt.run(orderId, payloadJson);
+    const orderId = await createOrder(payload);
     
     logger.info(`Order created: ${orderId}`);
     
@@ -49,20 +62,31 @@ router.post('/orders', validateApiKey, (req, res) => {
 });
 
 // Update existing order - accepts ANY JSON payload
-router.put('/orders/:orderId', validateApiKey, (req, res) => {
+router.put('/orders/:orderId', validateApiKey, async (req, res) => {
   try {
     const { orderId } = req.params;
-    // Accept whatever JSON payload is sent - no validation of content
+    
+    // Validate order ID format (UUID or ORD- format)
+    if (!orderId || orderId.length < 10) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Invalid order ID format' 
+      });
+    }
+    
+    // Basic validation - ensure we have a payload
     const payload = req.body;
-    const payloadJson = JSON.stringify(payload);
     
-    const db = getDatabase();
-    const query = `UPDATE orders SET payload = ? WHERE order_id = ?`;
+    if (!payload || typeof payload !== 'object') {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Invalid payload: JSON object required' 
+      });
+    }
     
-    const stmt = db.prepare(query);
-    const result = stmt.run(payloadJson, orderId);
+    const success = await updateOrder(orderId, payload);
     
-    if (result.changes === 0) {
+    if (!success) {
       return res.status(404).json({ 
         success: false,
         error: 'Order not found' 
@@ -91,16 +115,12 @@ router.put('/orders/:orderId', validateApiKey, (req, res) => {
 });
 
 // Delete order
-router.delete('/orders/:orderId', validateApiKey, (req, res) => {
+router.delete('/orders/:orderId', validateApiKey, async (req, res) => {
   try {
     const { orderId } = req.params;
     
-    const db = getDatabase();
-    
-    // First get the order payload to include in the delete notification
-    const getQuery = 'SELECT payload FROM orders WHERE order_id = ?';
-    const getStmt = db.prepare(getQuery);
-    const existingOrder = getStmt.get(orderId) as any;
+    // First get the order to include in the delete notification
+    const existingOrder = await getOrder(orderId);
     
     if (!existingOrder) {
       return res.status(404).json({ 
@@ -110,16 +130,14 @@ router.delete('/orders/:orderId', validateApiKey, (req, res) => {
     }
     
     // Delete the order
-    const deleteQuery = 'DELETE FROM orders WHERE order_id = ?';
-    const deleteStmt = db.prepare(deleteQuery);
-    const result = deleteStmt.run(orderId);
+    const success = await deleteOrder(orderId);
     
     logger.info(`Order deleted: ${orderId}`);
     
     // Broadcast to WebSocket clients
     broadcastToAll('order_deleted', {
       order_id: orderId,
-      payload: JSON.parse(existingOrder.payload)
+      payload: existingOrder.payload
     });
     
     res.json({ 
@@ -136,24 +154,9 @@ router.delete('/orders/:orderId', validateApiKey, (req, res) => {
 });
 
 // Get all orders (optional - for debugging/monitoring)
-router.get('/orders', validateApiKey, (req, res) => {
+router.get('/orders', validateApiKey, async (req, res) => {
   try {
-    const { limit = 50, offset = 0 } = req.query;
-    
-    const db = getDatabase();
-    const query = `
-      SELECT order_id, payload 
-      FROM orders 
-      LIMIT ? OFFSET ?
-    `;
-    
-    const stmt = db.prepare(query);
-    const rows = stmt.all(Number(limit), Number(offset)) as any[];
-    
-    const orders = rows.map(row => ({
-      order_id: row.order_id,
-      payload: JSON.parse(row.payload)
-    }));
+    const orders = await getAllOrders();
     
     res.json({ 
       success: true,
@@ -170,26 +173,18 @@ router.get('/orders', validateApiKey, (req, res) => {
 });
 
 // Get single order (optional - for debugging/monitoring)
-router.get('/orders/:orderId', validateApiKey, (req, res) => {
+router.get('/orders/:orderId', validateApiKey, async (req, res) => {
   try {
     const { orderId } = req.params;
     
-    const db = getDatabase();
-    const query = 'SELECT order_id, payload FROM orders WHERE order_id = ?';
-    const stmt = db.prepare(query);
-    const row = stmt.get(orderId) as any;
+    const order = await getOrder(orderId);
     
-    if (!row) {
+    if (!order) {
       return res.status(404).json({ 
         success: false,
         error: 'Order not found' 
       });
     }
-    
-    const order = {
-      order_id: row.order_id,
-      payload: JSON.parse(row.payload)
-    };
     
     res.json({ 
       success: true,

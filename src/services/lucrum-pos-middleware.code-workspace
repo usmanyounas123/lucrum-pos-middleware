@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../frappe_directory_v15/frappe-bench/apps/lucrum_deli_pos"
+		},
+		{
+			"path": "../../../lucrum-pos-middleware-1684bc73ebca5d98f50c6934a56f3171beb71ff4/release"
+		}
+	],
+	"settings": {}
+}
