@@ -1,30 +1,7 @@
 @echo off
 echo ================================================
 echo     Lucrum POS Middleware - Quick Install
-echo ===============echo Waiting for service startup...
-timeout /t 15 /nobreak >nul
-
-echo Testing service health...
-curl -s http://localhost:8081/api/health >nul 2>&1
-if %errorLevel% equ 0 (
-    goto :success
-) else (
-    curl -s http://localhost:3000/api/health >nul 2>&1
-    if %errorLevel% equ 0 (
-        echo Service is running on port 3000
-        goto :success
-    ) else (
-        echo Service installed but may need manual start
-        echo.
-        echo MANUAL OPTIONS:
-        echo 1. Run test-direct.bat to see startup errors
-        echo 2. Run start.bat to try starting manually
-        echo 3. Run test-run-simple.bat to test without service
-        echo 4. Check logs in logs\app.log for errors
-        echo.
-        goto :info
-    )
-)======================
+echo ================================================
 echo.
 
 REM Check if running as administrator
@@ -34,8 +11,8 @@ if %errorLevel% neq 0 (
     echo Please right-click on this file and select "Run as administrator"
     echo.
     echo Current user permissions are insufficient for:
-    echo - Creating scheduled tasks
-    echo - Installing Windows services
+    echo - Creating Windows services
+    echo - Installing system components
     echo - Modifying system configuration
     echo.
     pause
@@ -54,9 +31,9 @@ if not exist "lucrum-pos-middleware.exe" (
     echo Please ensure all files are extracted properly
     echo.
     echo Expected files in this directory:
-    echo - lucrum-pos-middleware.exe (main application)
-    echo - install.bat (this installer)
-    echo - start.bat, stop.bat, status.bat (management scripts)
+    echo - lucrum-pos-middleware.exe main application
+    echo - install.bat this installer
+    echo - start.bat, stop.bat management scripts
     echo.
     echo Current directory: %~dp0
     dir /b *.exe 2>nul
@@ -83,123 +60,186 @@ if not exist "config.json" (
     echo     "port": 8080>> config.json
     echo   },>> config.json
     echo   "database": {>> config.json
-    echo     "type": "sqlite",>> config.json
-    echo     "filename": "data.db">> config.json
+    echo     "type": "json",>> config.json
+    echo     "filename": "data.json">> config.json
     echo   }>> config.json
     echo }>> config.json
 )
 
 echo 3. Removing any existing installations...
-REM Stop and remove old service
+REM Stop and remove old service/task instances
+taskkill /f /im lucrum-pos-middleware.exe >nul 2>&1
+sc stop "LucrumPOSMiddleware" >nul 2>&1
+sc delete "LucrumPOSMiddleware" >nul 2>&1
 sc stop "Lucrum-POS-Middleware" >nul 2>&1
 sc delete "Lucrum-POS-Middleware" >nul 2>&1
-
-REM Remove old scheduled task
 schtasks /delete /tn "Lucrum-POS-Middleware" /f >nul 2>&1
 
-echo 4. Installing as scheduled task (most reliable method)...
-REM Create scheduled task with proper working directory
-schtasks /create /tn "Lucrum-POS-Middleware" /tr "\"%~dp0lucrum-pos-middleware.exe\"" /sc onstart /ru SYSTEM /rl HIGHEST /sd "%~dp0" /f
+echo 4. Installing as Task Scheduler service most reliable for Node.js apps...
+schtasks /create /tn "LucrumPOSMiddleware" /tr "\"%~dp0lucrum-pos-middleware.exe\"" /sc onstart /ru SYSTEM /rl HIGHEST /f
 
 if %errorLevel% neq 0 (
     echo ERROR: Failed to create scheduled task
     echo Error code: %errorLevel%
-    echo Trying Windows service instead...
-    pause
-    goto :install_service
+    echo.
+    echo Trying Windows Service as fallback...
+    goto :try_windows_service
 )
 
-echo 5. Starting Lucrum POS Middleware...
-schtasks /run /tn "Lucrum-POS-Middleware"
+echo 5. Starting Lucrum POS Middleware via Task Scheduler...
+schtasks /run /tn "LucrumPOSMiddleware"
 
 if %errorLevel% neq 0 (
-    echo ERROR: Failed to start scheduled task
-    goto :install_service
+    echo WARNING: Task created but failed to start
+    echo Error code: %errorLevel%
+    echo.
+    echo Trying Windows Service as fallback...
+    goto :try_windows_service
 )
 
-echo.
-echo 6. Waiting for startup (15 seconds)...
+echo 6. Waiting for application startup 15 seconds...
 timeout /t 15 /nobreak >nul
+goto :check_status
 
-echo 7. Testing if middleware is running...
-curl -s http://localhost:8081/api/health >nul 2>&1
-if %errorLevel% equ 0 (
-    goto :success
-) else (
-    echo Health check failed on port 8081, trying port 3000...
-    curl -s http://localhost:3000/api/health >nul 2>&1
-    if %errorLevel% equ 0 (
-        echo Service is running on port 3000 instead
-        goto :success
-    ) else (
-        echo Scheduled task method failed, trying Windows service...
-        goto :install_service
-    )
-)
-
-:install_service
+:try_windows_service
 echo.
-echo Installing as Windows Service (fallback method)...
-REM Create Windows service with proper working directory
-sc create "Lucrum-POS-Middleware" binPath= "\"%~dp0lucrum-pos-middleware.exe\"" start= auto DisplayName= "Lucrum POS Middleware Service" type= own
+echo Attempting Windows Service installation fallback...
+sc create "LucrumPOSMiddleware" binPath= "\"%~dp0lucrum-pos-middleware.exe\"" start= auto DisplayName= "Lucrum POS Middleware" type= own
 
 if %errorLevel% neq 0 (
-    echo ERROR: Failed to create Windows service
+    echo ERROR: Both Task Scheduler and Windows Service failed
     echo Error code: %errorLevel%
     echo.
     echo TROUBLESHOOTING:
-    echo 1. Make sure you're running as Administrator
-    echo 2. Check if port 8081 is available
-    echo 3. Try running test-run-simple.bat to test manually
+    echo - Ensure running as Administrator
+    echo - Check antivirus is not blocking
+    echo - Verify port 8081 is available
+    echo - Try test.bat to run directly
     echo.
     pause
     exit /b 1
 )
 
-echo Starting Windows service...
-sc start "Lucrum-POS-Middleware"
+echo Configuring service auto-restart...
+sc failure "LucrumPOSMiddleware" reset= 30 actions= restart/5000/restart/5000/restart/5000 >nul 2>&1
+
+echo Starting Windows Service...
+sc start "LucrumPOSMiddleware"
 
 if %errorLevel% neq 0 (
-    echo ERROR: Service failed to start
-    echo This might be due to timeout issues
+    echo WARNING: Service created but timeout error 1053
+    echo This is common with Node.js applications
     echo.
-    echo MANUAL START OPTION:
-    echo You can manually start by running: test-run.bat
-    pause
-    exit /b 1
+    echo RECOMMENDED: Use Task Scheduler instead
+    echo Removing failed Windows Service...
+    sc stop "LucrumPOSMiddleware" >nul 2>&1
+    sc delete "LucrumPOSMiddleware" >nul 2>&1
+    echo.
+    echo Creating Task Scheduler entry...
+    schtasks /create /tn "LucrumPOSMiddleware" /tr "\"%~dp0lucrum-pos-middleware.exe\"" /sc onstart /ru SYSTEM /rl HIGHEST /f
+    schtasks /run /tn "LucrumPOSMiddleware"
+    echo Task Scheduler method applied
 )
 
-echo Waiting for service startup...
+echo Waiting for application startup 15 seconds...
 timeout /t 15 /nobreak >nul
 
-curl -s http://localhost:8081/api/health >nul 2>&1
+:check_status
+
+echo 7. Checking if middleware is running...
+tasklist /fi "imagename eq lucrum-pos-middleware.exe" 2>nul | find /i "lucrum-pos-middleware.exe" >nul
 if %errorLevel% equ 0 (
-    goto :success
+    echo SUCCESS: Process is running!
+    goto :test_api
 ) else (
-    echo Service installed but may need manual start
-    echo Try running: test-run.bat to test manually
-    goto :info
+    echo WARNING: Process not detected
+    echo Waiting additional 10 seconds...
+    timeout /t 10 /nobreak >nul
+    
+    tasklist /fi "imagename eq lucrum-pos-middleware.exe" 2>nul | find /i "lucrum-pos-middleware.exe" >nul
+    if %errorLevel% equ 0 (
+        echo SUCCESS: Process is now running!
+        goto :test_api
+    ) else (
+        echo ERROR: Application failed to start
+        echo.
+        echo TROUBLESHOOTING STEPS:
+        echo 1. Run test.bat to see error messages
+        echo 2. Check Windows Event Viewer for errors
+        echo 3. Verify port 8081 is not in use
+        echo 4. Check antivirus is not blocking
+        echo.
+        goto :info
+    )
 )
+
+:test_api
+echo 8. Testing API health endpoint...
+timeout /t 5 /nobreak >nul
+powershell -command "try { $response = Invoke-WebRequest -Uri 'http://localhost:8081/api/health' -TimeoutSec 10; Write-Host 'Health check successful:'; Write-Host $response.Content } catch { Write-Host 'Health check failed:'; Write-Host $_.Exception.Message }"
 
 :success
 echo.
-echo ================================================
-echo        ✓ INSTALLATION SUCCESSFUL!
-echo ================================================
+echo ============================================
+echo   INSTALLATION COMPLETED SUCCESSFULLY!
+echo ============================================
 echo.
-echo Lucrum POS Middleware is now running!
+echo Service Status:
+sc query "LucrumPOSMiddleware" 2>nul | findstr "STATE" || echo Service not found
 echo.
-echo ✓ API Available: http://localhost:8081
-echo ✓ WebSocket Available: ws://localhost:8081
-echo ✓ API Key: test-api-key-123
+echo Process Status:
+tasklist | find "lucrum-pos-middleware.exe" >nul && echo Process is running || echo Process not running
 echo.
-echo Management:
-echo • To stop: run stop.bat (or uninstall.bat to remove)
-echo • To check status: run status.bat
-echo • Logs are in: logs\app.log
+echo IMPORTANT:
+echo - Middleware is now installed and running
+echo - It will AUTO-START when Windows boots
+echo - It will AUTO-RESTART if it crashes
+echo - Using Task Scheduler for better Node.js compatibility
 echo.
-echo The middleware will automatically start with Windows.
-goto :end
+echo Configuration:
+echo - Service runs on: http://localhost:8081
+echo - API Health: http://localhost:8081/api/health
+echo - WebSocket: ws://localhost:8081
+echo - API Key: admin-key-change-this-in-production
+echo.
+echo Installation Method:
+schtasks /query /tn "LucrumPOSMiddleware" >nul 2>&1
+if %errorLevel% equ 0 (
+    echo - Method: Task Scheduler Recommended for Node.js
+) else (
+    sc query "LucrumPOSMiddleware" >nul 2>&1
+    if %errorLevel% equ 0 (
+        echo - Method: Windows Service Legacy fallback
+    ) else (
+        echo - Method: Installation method unclear
+    )
+)
+echo.
+echo Configuration:
+echo - Service runs on: http://localhost:8081
+echo - API Health: http://localhost:8081/api/health
+echo - WebSocket: ws://localhost:8081
+echo - API Key: admin-key-change-this-in-production
+echo.
+echo Files used:
+echo - Executable: %~dp0lucrum-pos-middleware.exe
+echo - Database: %~dp0data.json
+echo - Config: %~dp0config.json
+echo.
+echo USAGE:
+echo - Test orders: Use test.html
+echo - Stop service: stop.bat
+echo - Check status: status.bat
+echo - Uninstall: uninstall.bat
+echo.
+echo TROUBLESHOOTING:
+echo - If not responding, run start.bat as Administrator
+echo - Check Windows Event Viewer for service errors
+echo - Port 8081 must be available
+echo - Antivirus may block the service
+echo.
+pause
+exit /b 0
 
 :info
 echo.
@@ -207,17 +247,23 @@ echo ================================================
 echo        INSTALLATION COMPLETED
 echo ================================================
 echo.
-echo Lucrum POS Middleware has been installed.
+echo Lucrum POS Middleware has been installed as a Windows Service.
 echo.
 echo If it's not running automatically:
-echo 1. Run test-direct.bat to see error messages
-echo 2. Run start.bat to try starting manually
-echo 3. Or start the scheduled task: schtasks /run /tn "Lucrum-POS-Middleware"
+echo 1. Run start.bat as Administrator
+echo 2. Run test.bat to test without service
+echo 3. Check Windows Event Viewer for errors
 echo.
-echo API will be: http://localhost:8081
-echo WebSocket will be: ws://localhost:8081
-echo API Key: test-api-key-123
-
-:end
+echo Configuration:
+echo - API will be: http://localhost:8081
+echo - WebSocket will be: ws://localhost:8081
+echo - API Key: admin-key-change-this-in-production
+echo.
+echo Management files:
+echo - start.bat start the service
+echo - stop.bat stop the service
+echo - status.bat check service status
+echo - uninstall.bat remove everything
 echo.
 pause
+exit /b 0

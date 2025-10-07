@@ -1,147 +1,140 @@
 @echo off
-echo Checking Lucrum POS Middleware Status...
+setlocal enabledelayedexpansion
+echo ================================================
+echo     Lucrum POS Middleware - Status Check
+echo ================================================
 echo.
 
 cd /d "%~dp0"
 
-echo Application Process Status:
-echo ===========================
+echo INSTALLATION STATUS:
+echo ================================
+
+REM Check if files exist
+if exist "lucrum-pos-middleware.exe" (
+    echo + Executable: Found
+) else (
+    echo - Executable: MISSING
+)
+
+if exist "config.json" (
+    echo + Config: Found
+) else (
+    echo - Config: Missing
+)
+
+if exist "data.json" (
+    echo + Database: Found
+) else (
+    echo - Database: Will be created on first run
+)
+
+echo.
+echo SERVICE STATUS:
+echo ================================
+
+REM Check Task Scheduler first
+schtasks /query /tn "LucrumPOSMiddleware" >nul 2>&1
+if %errorLevel% equ 0 (
+    echo + Task Scheduler: Installed Recommended
+    schtasks /query /tn "LucrumPOSMiddleware" /fo LIST 2>nul | find "Status:" || echo   Status: Ready
+) else (
+    echo - Task Scheduler: Not installed
+)
+
+REM Check Windows Service
+sc query "LucrumPOSMiddleware" >nul 2>&1
+if %errorLevel% equ 0 (
+    echo + Windows Service: Installed Fallback
+    for /f "tokens=4" %%i in ('sc query "LucrumPOSMiddleware" ^| find "STATE"') do set SERVICE_STATE=%%i
+    echo   State: !SERVICE_STATE!
+) else (
+    echo - Windows Service: Not installed
+)
+
+REM Check legacy Scheduled Task
+schtasks /query /tn "Lucrum-POS-Middleware" >nul 2>&1
+if %errorLevel% equ 0 (
+    echo + Legacy Scheduled Task: Found
+) else (
+    echo - Legacy Scheduled Task: Not found
+)
+
+echo.
+echo PROCESS STATUS:
+echo ================================
+
 tasklist /fi "imagename eq lucrum-pos-middleware.exe" 2>nul | find /i "lucrum-pos-middleware.exe" >nul
 if %errorLevel% equ 0 (
-    echo Process: RUNNING ✓
-    echo.
-    echo Process details:
-    tasklist /fi "imagename eq lucrum-pos-middleware.exe" /fo table
+    echo + Process: RUNNING
+    for /f "skip=3 tokens=2" %%i in ('tasklist /fi "imagename eq lucrum-pos-middleware.exe"') do (
+        echo   PID: %%i
+        goto :found_pid
+    )
+    :found_pid
 ) else (
-    echo Process: NOT RUNNING ✗
+    echo - Process: NOT RUNNING
 )
 
 echo.
-echo Task Scheduler Status:
-echo ======================
-schtasks /query /tn "Lucrum-POS-Middleware" >nul 2>&1
+echo NETWORK STATUS:
+echo ================================
+
+echo Testing API endpoints...
+powershell -command "try { $response = Invoke-WebRequest -Uri 'http://localhost:8081/api/health' -TimeoutSec 5; Write-Host '+ API Health: RESPONDING' -ForegroundColor Green } catch { Write-Host '- API Health: NOT RESPONDING' -ForegroundColor Red }"
+
+echo Testing port availability...
+netstat -an 2>nul | find ":8081" >nul
 if %errorLevel% equ 0 (
-    echo Scheduled Task: FOUND ✓
-    echo Task Name: Lucrum-POS-Middleware
-    schtasks /query /tn "Lucrum-POS-Middleware" /fo LIST | find "Status"
+    echo + Port 8081: In use
 ) else (
-    echo Scheduled Task: NOT FOUND ✗
-    echo Check if application was installed correctly
+    echo - Port 8081: Not in use
 )
 
 echo.
-echo Windows Service Status (Legacy):
-echo =================================
-sc query "LucrumPOSMiddleware" 2>nul
-if %errorLevel% neq 0 (
-    echo Windows Service: NOT INSTALLED (this is normal for Task Scheduler installation)
-) else (
-    echo Windows Service: FOUND (may be old installation)
-)
+echo FILE LOCATIONS:
+echo ================================
+echo Current Directory: %CD%
+echo Executable: %~dp0lucrum-pos-middleware.exe
+echo Database: %~dp0data.json
+echo Config: %~dp0config.json
+echo Logs: %~dp0logs\
 
 echo.
-echo Port Status:
-echo ============
-netstat -an | find "8081" >nul 2>&1
+echo INSTALLATION METHOD:
+echo ================================
+schtasks /query /tn "LucrumPOSMiddleware" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo API Port 8081: ACTIVE ✓
+    echo Method: Task Scheduler Recommended for Node.js
 ) else (
-    echo API Port 8081: NOT ACTIVE ✗
-)
-
-netstat -an | find "8081" >nul 2>&1
-if %errorLevel% equ 0 (
-    echo WebSocket Port 8081: ACTIVE ✓
-) else (
-    echo WebSocket Port 8081: NOT ACTIVE ✗
-)
-
-echo.
-echo File Status:
-echo ============
-if exist "lucrum-pos-middleware.exe" (
-    echo lucrum-pos-middleware.exe: EXISTS ✓
-) else (
-    echo lucrum-pos-middleware.exe: MISSING ✗
-)
-
-if exist ".env" (
-    echo .env: EXISTS ✓
-) else (
-    echo .env: MISSING ✗
-)
-
-echo.
-echo Log Status:
-echo ===========
-if exist "logs" (
-    echo Logs directory: EXISTS ✓
-    if exist "logs\app.log" (
-        echo Log file: EXISTS ✓
-        echo.
-        echo Recent log entries (last 10 lines):
-        echo -------------------
-        powershell "Get-Content logs\app.log -Tail 10 -ErrorAction SilentlyContinue" 2>nul
-        if %errorLevel% neq 0 (
-            echo [PowerShell not available for log reading]
-            echo Use: type logs\app.log
+    schtasks /query /tn "Lucrum-POS-Middleware" >nul 2>&1
+    if %errorLevel% equ 0 (
+        echo Method: Legacy Task Scheduler
+    ) else (
+        sc query "LucrumPOSMiddleware" >nul 2>&1
+        if %errorLevel% equ 0 (
+            echo Method: Windows Service Fallback - may have timeout issues
+        ) else (
+            echo Method: NOT DETECTED - Run install.bat
         )
-    ) else (
-        echo Log file: NOT FOUND ✗
-        echo No logs available yet
-    )
-) else (
-    echo Logs directory: NOT FOUND ✗
-    echo No logs directory created yet
-)
-
-echo.
-echo Installation Method Detection:
-echo ==============================
-schtasks /query /tn "Lucrum-POS-Middleware" >nul 2>&1
-if %errorLevel% equ 0 (
-    echo Method: Task Scheduler ✓ (Recommended)
-    echo Task Name: Lucrum-POS-Middleware
-    echo Management: Use batch files (start.bat, stop.bat, etc.)
-) else (
-    sc query "LucrumPOSMiddleware" >nul 2>&1
-    if %errorLevel% equ 0 (
-        echo Method: Windows Service (Legacy - may have timeout issues)
-        echo Recommendation: Reinstall using Task Scheduler method
-    ) else (
-        echo Method: NOT DETECTED ✗
-        echo Please run install.bat to install the application
     )
 )
 
 echo.
-echo URLs to test:
-echo =============
-echo API: http://localhost:8081
-echo WebSocket: ws://localhost:8081
-if exist "test.html" (
-    echo Test Page: test.html (open in browser)
-)
+echo MANAGEMENT OPTIONS:
+echo ================================
+echo - Start: start.bat
+echo - Stop: stop.bat  
+echo - Test: test.bat
+echo - Uninstall: uninstall.bat
 
 echo.
-echo API Health Check:
-echo ==================
-echo Testing API connection on 8081...
-curl -s http://localhost:8081/api/health 1>nul 2>nul
-if %errorLevel% equ 0 (
-    echo API on 8081 responded successfully ✓
-) else (
-    echo 8081 not responding. Testing 3000...
-    curl -s http://localhost:3000/api/health 1>nul 2>nul
-    if %errorLevel% equ 0 (
-        echo API on 3000 responded successfully ✓
-        echo Note: Your service is running on port 3000
-    ) else (
-        echo API not responding on 8081 or 3000 ✗
-        echo Check if the service is running or firewall rules.
-    )
-)
+echo ACCESS URLS:
+echo ================================
+echo - API: http://localhost:8081
+echo - Health: http://localhost:8081/api/health
+echo - WebSocket: ws://localhost:8081
+echo - Test Page: test.html open in browser
 
-:end
 echo.
 pause
