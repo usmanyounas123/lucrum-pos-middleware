@@ -91,14 +91,35 @@ if %errorLevel% equ 0 (
     echo - Port 8081: Not in use
 )
 
+echo Checking Windows Firewall rules...
+netsh advfirewall firewall show rule name="Lucrum POS Middleware" >nul 2>&1
+if %errorLevel% equ 0 (
+    echo + Firewall 8081: Rule exists
+) else (
+    echo - Firewall 8081: No rule found
+)
+
+netsh advfirewall firewall show rule name="Lucrum POS WebSocket" >nul 2>&1
+if %errorLevel% equ 0 (
+    echo + Firewall 8080: Rule exists
+) else (
+    echo - Firewall 8080: No rule found
+)
+
 echo.
 echo FILE LOCATIONS:
 echo ================================
+echo Installation: PORTABLE - Works from any directory
 echo Current Directory: %CD%
 echo Executable: %~dp0lucrum-pos-middleware.exe
 echo Database: %~dp0data.json
 echo Config: %~dp0config.json
 echo Logs: %~dp0logs\
+echo.
+echo PATH FLEXIBILITY:
+echo - No C: drive requirement
+echo - Can run from Desktop, Downloads, USB drive, etc.
+echo - All files stored relative to installation directory
 
 echo.
 echo INSTALLATION METHOD:
@@ -131,10 +152,17 @@ echo - Uninstall: uninstall.bat
 echo.
 echo ACCESS URLS:
 echo ================================
-echo - API: http://localhost:8081
+echo - Local API: http://localhost:8081
+echo - Public API: http://YOUR-IP-ADDRESS:8081
 echo - Health: http://localhost:8081/api/health
-echo - WebSocket: ws://localhost:8081
+echo - WebSocket: ws://localhost:8081 or ws://YOUR-IP-ADDRESS:8081
 echo - Test Page: test.html open in browser
+echo.
+echo NETWORK INFO:
+echo ================================
+echo - Firewall: Ports 8081 and 8080 should be configured
+echo - Router: May need port forwarding for external access
+echo - Local IP: Run "ipconfig" to find your local IP address
 
 echo.
 pause

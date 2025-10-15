@@ -59,7 +59,22 @@ if %errorLevel% equ 0 (
     echo ⚠ Scheduled task not found or already removed
 )
 
-echo 6. Checking for remaining processes...
+echo 6. Removing Windows Firewall rules...
+netsh advfirewall firewall delete rule name="Lucrum POS Middleware" >nul 2>&1
+if %errorLevel% equ 0 (
+    echo ✓ Firewall rule for port 8081 removed
+) else (
+    echo ⚠ Firewall rule for port 8081 not found or already removed
+)
+
+netsh advfirewall firewall delete rule name="Lucrum POS WebSocket" >nul 2>&1
+if %errorLevel% equ 0 (
+    echo ✓ Firewall rule for port 8080 removed
+) else (
+    echo ⚠ Firewall rule for port 8080 not found or already removed
+)
+
+echo 7. Checking for remaining processes...
 tasklist /fi "imagename eq lucrum-pos-middleware.exe" 2>nul | find /i "lucrum-pos-middleware.exe" >nul
 if %errorLevel% equ 0 (
     echo ✗ WARNING: Some processes still running
@@ -70,7 +85,7 @@ if %errorLevel% equ 0 (
 )
 
 echo.
-echo 7. Files and folders that can be manually deleted:
+echo 8. Files and folders that can be manually deleted:
 echo ================================
 echo Current directory: %~dp0
 echo - lucrum-pos-middleware.exe

@@ -21,6 +21,12 @@ if %errorLevel% neq 0 (
 
 echo Installing Lucrum POS Middleware...
 echo.
+echo INSTALLATION PATH:
+echo - Can be installed anywhere on your system
+echo - Works from any folder (Desktop, Downloads, C:\, etc.)
+echo - No need to move to C:\LucrumPOSMiddleware
+echo - Current location: %~dp0
+echo.
 
 REM Navigate to the directory containing this script
 cd /d "%~dp0"
@@ -66,7 +72,27 @@ if not exist "config.json" (
     echo }>> config.json
 )
 
-echo 3. Removing any existing installations...
+echo 3. Configuring Windows Firewall for public access...
+echo Adding firewall rule for port 8081...
+netsh advfirewall firewall delete rule name="Lucrum POS Middleware" >nul 2>&1
+netsh advfirewall firewall add rule name="Lucrum POS Middleware" dir=in action=allow protocol=TCP localport=8081 >nul 2>&1
+if %errorLevel% equ 0 (
+    echo ✓ Firewall rule added for port 8081
+) else (
+    echo ⚠ Warning: Could not add firewall rule automatically
+    echo   You may need to manually add port 8081 to Windows Firewall
+)
+
+echo Adding firewall rule for WebSocket port 8080...
+netsh advfirewall firewall delete rule name="Lucrum POS WebSocket" >nul 2>&1
+netsh advfirewall firewall add rule name="Lucrum POS WebSocket" dir=in action=allow protocol=TCP localport=8080 >nul 2>&1
+if %errorLevel% equ 0 (
+    echo ✓ Firewall rule added for WebSocket port 8080
+) else (
+    echo ⚠ Warning: Could not add WebSocket firewall rule
+)
+
+echo 4. Removing any existing installations...
 REM Stop and remove old service/task instances
 taskkill /f /im lucrum-pos-middleware.exe >nul 2>&1
 sc stop "LucrumPOSMiddleware" >nul 2>&1
@@ -75,7 +101,7 @@ sc stop "Lucrum-POS-Middleware" >nul 2>&1
 sc delete "Lucrum-POS-Middleware" >nul 2>&1
 schtasks /delete /tn "Lucrum-POS-Middleware" /f >nul 2>&1
 
-echo 4. Installing as Task Scheduler service most reliable for Node.js apps...
+echo 5. Installing as Task Scheduler service most reliable for Node.js apps...
 schtasks /create /tn "LucrumPOSMiddleware" /tr "\"%~dp0lucrum-pos-middleware.exe\"" /sc onstart /ru SYSTEM /rl HIGHEST /f
 
 if %errorLevel% neq 0 (
@@ -86,7 +112,7 @@ if %errorLevel% neq 0 (
     goto :try_windows_service
 )
 
-echo 5. Starting Lucrum POS Middleware via Task Scheduler...
+echo 6. Starting Lucrum POS Middleware via Task Scheduler...
 schtasks /run /tn "LucrumPOSMiddleware"
 
 if %errorLevel% neq 0 (
@@ -97,7 +123,7 @@ if %errorLevel% neq 0 (
     goto :try_windows_service
 )
 
-echo 6. Waiting for application startup 15 seconds...
+echo 7. Waiting for application startup 15 seconds...
 timeout /t 15 /nobreak >nul
 goto :check_status
 
@@ -146,7 +172,7 @@ timeout /t 15 /nobreak >nul
 
 :check_status
 
-echo 7. Checking if middleware is running...
+echo 8. Checking if middleware is running...
 tasklist /fi "imagename eq lucrum-pos-middleware.exe" 2>nul | find /i "lucrum-pos-middleware.exe" >nul
 if %errorLevel% equ 0 (
     echo SUCCESS: Process is running!
@@ -174,7 +200,7 @@ if %errorLevel% equ 0 (
 )
 
 :test_api
-echo 8. Testing API health endpoint...
+echo 9. Testing API health endpoint...
 timeout /t 5 /nobreak >nul
 powershell -command "try { $response = Invoke-WebRequest -Uri 'http://localhost:8081/api/health' -TimeoutSec 10; Write-Host 'Health check successful:'; Write-Host $response.Content } catch { Write-Host 'Health check failed:'; Write-Host $_.Exception.Message }"
 
@@ -197,10 +223,16 @@ echo - It will AUTO-RESTART if it crashes
 echo - Using Task Scheduler for better Node.js compatibility
 echo.
 echo Configuration:
-echo - Service runs on: http://localhost:8081
+echo - Local Access: http://localhost:8081
+echo - Public Access: http://YOUR-IP-ADDRESS:8081
 echo - API Health: http://localhost:8081/api/health
-echo - WebSocket: ws://localhost:8081
+echo - WebSocket: ws://localhost:8081 or ws://YOUR-IP-ADDRESS:8081
 echo - API Key: admin-key-change-this-in-production
+echo.
+echo Network Setup:
+echo - Port 8081: Added to Windows Firewall (API)
+echo - Port 8080: Added to Windows Firewall (WebSocket)
+echo - For public access: Configure router port forwarding if needed
 echo.
 echo Installation Method:
 schtasks /query /tn "LucrumPOSMiddleware" >nul 2>&1
@@ -215,12 +247,6 @@ if %errorLevel% equ 0 (
     )
 )
 echo.
-echo Configuration:
-echo - Service runs on: http://localhost:8081
-echo - API Health: http://localhost:8081/api/health
-echo - WebSocket: ws://localhost:8081
-echo - API Key: admin-key-change-this-in-production
-echo.
 echo Files used:
 echo - Executable: %~dp0lucrum-pos-middleware.exe
 echo - Database: %~dp0data.json
@@ -231,6 +257,7 @@ echo - Test orders: Use test.html
 echo - Stop service: stop.bat
 echo - Check status: status.bat
 echo - Uninstall: uninstall.bat
+echo - Find your IPs: ip-info.bat
 echo.
 echo TROUBLESHOOTING:
 echo - If not responding, run start.bat as Administrator
@@ -255,9 +282,11 @@ echo 2. Run test.bat to test without service
 echo 3. Check Windows Event Viewer for errors
 echo.
 echo Configuration:
-echo - API will be: http://localhost:8081
-echo - WebSocket will be: ws://localhost:8081
+echo - Local API: http://localhost:8081
+echo - Public API: http://YOUR-IP-ADDRESS:8081
+echo - WebSocket: ws://localhost:8081 or ws://YOUR-IP-ADDRESS:8081
 echo - API Key: admin-key-change-this-in-production
+echo - Firewall: Ports 8081 and 8080 configured
 echo.
 echo Management files:
 echo - start.bat start the service
